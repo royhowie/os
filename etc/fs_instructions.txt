@@ -1,0 +1,117 @@
+Very Basic File System
+
+Although basic, this will be build upon, so build it well.
+
+Required: A library of functions that normal BCPL programs
+can use to give them convenient access to disc files.
+
+These are the required functions, you may decide they need
+extra parameters if that's convenient, but don't make them
+difficult to use.
+
+Contiguous allocation of blocks for files is allowed (and
+encouraged, you want this first version to work quickly).
+You do not even need to implement sub-directories yet.
+
++ format(disc_unit_number, name)
+
+  Prepare a disc for first use. 
+  + Must create a superblock that records the disc's name, 
+    time of formatting, first free block, number of free 
+    blocks, etc.
+  + Must create an empty root directory. May have fixed size
+    or size given by a parameter. Directory entries must contain
+    space for the file's name, its type, its length, its first
+    block, and its last time of modification.
+  + Anything else needed to make the disc usable.
+  
++ mount(disc_unit_number, name)
+
+  You hope to only format each disc once, but every time your
+  OS is restarted it must "mount" the disc, reading certain
+  essential information into memory. It should also check that
+  the disc unit number and the name match correctly.
+  
+  It is reasonable for a program to be working with files on
+  multiple disc drives at the same time. Mount should return
+  as its result a pointer to an object that contains the necessary
+  information (we don't want it all scattered in global variables).
+  This object pointer will be passed as a parameter (DISC*) to many
+  other functions.
+  
++ dismount(DISC*)
+
+  The opposite: any information for the disc that is stored in
+  memory and has been modified should be written back. After this
+  operation the disc can not be used again. Unless it is remounted
+  of course.
+  
++ ls(DISC*)
+
+  Print a human readable listing of the disc's root directory
+  
++ open(DISC*, file_name, direction)
+
+  Find the named file, and prepare it for use. direction = 'w' means
+  it may only be used for writing, 'r' means only for reading.
+  Create an object that contains the important information for accessing
+  that file, such as which block number you are one, how long it is,
+  and so on, AND its block-sized (512 byte, 128 word) buffer.
+  Return a pointer (FILE*) to the object, or nil on failure.
+  
+- You may either make open create a file if it doesn't exist when
+  opened for writing, or you may make a separate create(...) function
+  the separate function is recommened for simplicity.
+  
+  For this version, you may demand to be told a maximum for how
+  big the file will be, as an extra parameter when a file is created,
+  otherwise contiguous allocation will become a bit tricky.
+  
+  When a disc becomes full, there is nothing you can do about it (*)
+
++ close(FILE*)
+
+  If the file was opened for writing, make sure that any data in its
+  buffer is written. Update the file's length, date, etc as necessary.
+  Release the memory occupied by the FILE object.
+
++ delete(DISC*, file_name)
+
+  Just mark the file as deleted (change its type in the directory),
+  do not do anything to make it go away.
+
++ readbyte(FILE*)
+
+  Read and return a single byte from the file. You decide how to deal
+  with reaching the end of the file.
+  
+  Remember, must of the time this function will just retrieve the next
+  byte from the file's buffer. It only reads from the file when the buffer
+  is empty, when it reads a whole block.
+  
++ writebyte(FILE*, x)
+
+  Write the single byte value x to the file.
+  
+  Remember, must of the time this function will just add the byte to the 
+  file's buffer. It only writes to the file when the buffer is full, when 
+  it writes a whole block.
+  
++ eof(FILE*)
+
+  true or false: have I reached the end of this file yet?
+  
++ You may find the need for extra functions. Remember that it is very
+  important to be able to access real data. You very well may want
+  a function that creates a disc file with its contents exactly equal
+  to a magnetic tape (real external rabbit file).
+
+Provide a simple interactive shell that demonstrates these functions. You
+should be able to format, mount, and unmount discs, list the directory, 
+display the content of a file, create a file, delete a file, and add 
+text to a file. Make sure you can test it with big files.
+
+Document it: How to use the functions, how to use the shell. We'll both
+need that.
+
+

@@ -1,0 +1,2 @@
+manifest { SB_block_addr = 0, SB_firt_free_block = 0, SB_block_available = 1, SB_format_date = 2, SB_format_check = 3, SB_format_check_value = 4 }
+export { SB_block_addr, SB_first_free_block, SB_blocks_available, SB_format_date, SB_format_check, SB_format_check_value }

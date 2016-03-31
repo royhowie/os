@@ -1,0 +1,13 @@
+echo downloading bcpl.vim:
+curl -# http://rabbit.eng.miami.edu/students/gsalles/bcpl.vim > bcpl.vim
+
+mkdir -p ~/.vim/syntax
+
+echo moving bcpl.vim to vim syntax file
+mv bcpl.vim ~/.vim/syntax/
+
+echo appending the following to ~/vim.rc:
+
+echo "autocmd BufRead,BufNewFile *.b set syntax=bcpl" >> ~/.vimrc
+echo "autocmd BufRead,BufNewFile *.bcpl set syntax=bcpl" >> ~/.vimrc
+
