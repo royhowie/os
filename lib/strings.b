@@ -21,8 +21,7 @@ let strcmp (str1, str2) be {
 /*
 //Different strcmp logic
 //Returns 0 if str1 = str2, positive number if str1 > str2, and negative number if str 1 < str2
-let strcmp(str1, str2) be
-{
+let strcmp(str1, str2) be {
   let index = 0;
   while byte index of str1 = byte index of str2 do
   {
@@ -52,8 +51,7 @@ let strcpy (dest, source) be {
     resultis dest;
 }
 
-let strncpy(destination, source, n) be
-{
+let strncpy(destination, source, n) be {
   let index = 0;
   
   until index = n do
@@ -94,8 +92,7 @@ let strcat (dest, source) be {
     resultis dest;
 }
 
-let strncat(destination, source, n) be
-{
+let strncat(destination, source, n) be {
   let len = strlen(destination);
   let index = 0;
 
