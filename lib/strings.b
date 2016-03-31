@@ -1,6 +1,6 @@
 import "io"
 
-export { strcmp, strcpy, strdup, strcat, ins, fixed_to_str, str_to_fixed }
+export { strcmp, strcpy, strncpy, strdup, strcat, strncat, ins, fixed_to_str, str_to_fixed }
 
 let strcmp (str1, str2) be {
     let index = 0;
@@ -19,6 +19,22 @@ let strcmp (str1, str2) be {
 }
 
 /*
+//Different strcmp logic
+//Returns 0 if str1 = str2, positive number if str1 > str2, and negative number if str 1 < str2
+let strcmp(str1, str2) be
+{
+  let index = 0;
+  while byte index of str1 = byte index of str2 do
+  {
+    if byte index of str1 = 0 then resultis 0;
+    index +:= 1
+  } 
+  
+  resultis ((byte index of str1) - (byte index of str2))
+}
+*/
+
+/*
     copies a string from source to dest
     expects source to be null-terminated
     returns the memory location of dest
@@ -34,6 +50,20 @@ let strcpy (dest, source) be {
     byte index of dest := 0;
 
     resultis dest;
+}
+
+let strncpy(destination, source, n) be
+{
+  let index = 0;
+  
+  until index = n do
+  {
+    byte index of destination := byte index of source;
+    index +:= 1;
+  }
+
+  if n = strlen(source) + 1 then byte index of destination := 0; 
+  resultis destination;
 }
 
 let strdup (source) be {
@@ -62,6 +92,22 @@ let strcat (dest, source) be {
     byte (len + index) of dest := 0;
 
     resultis dest;
+}
+
+let strncat(destination, source, n) be
+{
+  let len = strlen(destination);
+  let index = 0;
+
+  until index = n do
+  {
+    byte len of destination := byte index of source;
+    index +:= 1;
+    len +:= 1;
+  }
+
+  if n = strlen(source) + 1 then byte len of destination := 0;
+  resultis destination;
 }
 
 let inch_unbuff () be {
