@@ -1,0 +1,48 @@
+The Plan.
+
+These steps are not necessarily sequential or in order.
+
+1. We have already been able to read an executable file from fake
+   magnetic tapes and run it (class 7, 2nd February).
+   Now load up your basic file system with a few executable and
+   data files, and be able to run executables from your own disc
+   file system.
+
+2. Make a better, more sophisticated file system, and make sure
+   you can do step one with it.
+
+3. We can already have two functions timesharing, running concurrently
+   (class 11, 16th February).
+   Become able to load two or more programs from your disc file 
+   system and run them concurrently.
+
+4. We can already read from the keyboard asynchronously, using 
+   interrupts (classes 10 to 11).
+   Make inno() and inch() (or your own versions of them) work with
+   keyboard interrupts so that your time sharing programs can interact
+   with the user. Remember all the buffers and race conditions.
+
+   (control characters to get attention)
+
+5. We can already build page directories and page tables and put 
+   "OS" code in high addresses and run things in user mode in lower 
+   addresses (class 16, 3rd March).
+   Now build the page tables as before, but read a separate executable,
+   the real operating system (designed to run only when VM is active)
+   from your disc file system, and let it take over.
+
+6. Make that OS able to create new processes (with their own page 
+   directories and some of their own page tables) to run programs
+   in user mode in low addresses at the command of the user.
+
+7. Keeping the results of steps 3 and 4 in play of course.
+
+8. Access to the file system should be through special system calls
+   that can run in system mode.
+
+9. You've got an actual multiprocessing operating system now.
+
+10. Make a good newvec and freevec, and let the OS allocate extra
+    pages of memory to a process when appropriate.
+
+11. Make it all nice and interesting.
