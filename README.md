@@ -2,4 +2,4 @@
 
 ---
 
-see [the plan](https://github.com/royhowie/operating-system/blob/master/plan.txt) for further details
+See [the plan](https://github.com/royhowie/operating-system/blob/master/plan.txt) for further details.
