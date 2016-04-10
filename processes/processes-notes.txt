@@ -1,0 +1,10 @@
+Current setup only allows for process to be added to the table.
+
+If a process finishes, i.e., halts, the program will exit since
+there is currently no interrupt handler for `IV_HALT`s.
+
+TO-DO:
+    - add more interrupt handlers (besides the timer one)
+    - IV_HALT should remove a process from the table
+    - add a keyboard handler. this should handle input
+        for different processes    
