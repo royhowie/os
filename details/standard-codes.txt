@@ -1,0 +1,142 @@
+opcodenote noreg
+opcodenote condcode
+opcodenote fakecode
+opcodenote iocommand
+opcodenote flag
+opcodenote specreg
+opcodenote usesssp
+opcodenote floato
+opcodenote floatr
+
+opcode HALT    noreg
+opcode LOAD    
+opcode LOADH   
+opcode STORE   
+opcode INC     noreg
+opcode DEC     noreg
+opcode ADD     
+opcode SUB     
+opcode MUL     
+opcode DIV     
+opcode MOD     
+opcode RSUB    
+opcode RDIV    
+opcode RMOD    
+opcode AND
+opcode OR
+opcode XOR
+opcode NOT
+opcode SHL
+opcode SHR
+opcode COMP
+opcode COMPZ   noreg   
+opcode TBIT
+opcode SBIT
+opcode CBIT
+opcode JUMP    noreg
+opcode JZER    
+opcode JPOS    
+opcode JNEG
+opcode JCOND   condcode    
+opcode GETFL   flag
+opcode SETFL   flag
+opcode GETSR   specreg
+opcode SETSR   specreg
+opcode PUSH    noreg
+opcode POP     noreg
+opcode CALL    noreg
+opcode RET     noreg
+opcode LDCH
+opcode STCH
+opcode DOIO
+opcode FAKEIT  fakecode
+opcode FLAGSJ
+opcode WAIT
+opcode PAUSE
+opcode BREAK
+opcode IRET    noreg usesssp
+opcode SYSCALL noreg usesssp
+opcode ATAS
+opcode PHLOAD
+opcode PHSTORE
+opcode VTRAN
+opcode MOVE
+opcode FADD    floatr floato
+opcode FSUB    floatr floato
+opcode FMUL    floatr floato
+opcode FDIV    floatr floato
+opcode FCOMP   floatr floato
+opcode FIX     floato
+opcode FRND    floatr floato
+opcode FLOAT   floatr
+opcode FLOG    floatr floato
+opcode FEXP    floatr floato
+opcode FFO
+opcode FLZ
+opcode RAND
+
+fakecode $PRINTCHAR
+fakecode $PRINT4CHAR
+fakecode $PRINTINT
+fakecode $PRINTHEX
+fakecode $PRINTSTR
+fakecode $READCHAR
+fakecode $PRINTFLOAT
+
+iocommand $READDISC
+iocommand $WRITEDISC
+iocommand $SIZEDISC
+iocommand $TERMINC
+iocommand $TERMINW
+iocommand $TERMOUTC
+iocommand $TERMOUTW
+iocommand $SECONDS
+iocommand $DATETIME
+iocommand $MTLOAD
+iocommand $MTUNLOAD
+iocommand $MTREAD
+iocommand $MTWRITE
+
+condcode EQL
+condcode NEQ
+condcode LSS
+condcode LEQ
+condcode GTR
+condcode GEQ
+condcode ERR
+
+flag $R       // running = not halted
+flag $Z       // zero result
+flag $N       // negative result
+flag $ERR     // error other than interrupt
+flag $SYS     // system mode, not user
+flag $IP      // interrupt being processed
+flag $VM      // virtual memory active
+
+specreg $FLAGS
+specreg $PDBR     // page directory base register
+specreg $INTVEC   // interrupt vector base
+specreg $CGBR     // call gate base register
+specreg $CGLEN    // call gate length
+specreg $DEBUG    // debugging break point
+specreg $TIMER    // countdown timer
+specreg $SYSSP    // system mode stack pointer
+specreg $SYSFP    // system mode frame pointer
+
+interrupt NONE       "no interrupt"
+interrupt MEMORY     "Physical memory access failed"
+interrupt PAGEFAULT  "Page fault",                 
+interrupt UNIMPOP    "Unimplemented operation code",
+interrupt HALT       "HALT instruction executed",
+interrupt DIVZERO    "Division by zero",
+interrupt UNWROP     "Unwritable instruction operand"
+interrupt TIMER      "Countdown timer reached zero"
+interrupt PRIVOP     "Privileged operation in user mode"
+interrupt KEYBD      "Keyboard character ready"
+interrupt BADCALL    "Bad SYSCALL index"
+interrupt PAGEPRIV   "User mode access to system mode page"
+interrupt DEBUG      "PC=$DEBUG trap"
+interrupt INTRFAULT  "Failure to process interrupt"
+
+pageprot $RES      // resident and valid
+pageprot $SYS      // system mode access only
