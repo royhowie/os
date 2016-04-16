@@ -1,6 +1,6 @@
 import "io"
 
-export { strcmp, strcpy, strncpy, strdup, strcat, strncat, ins, fixed_to_str, str_to_fixed }
+export { strcmp, streq, strcpy, strncpy, strdup, strcat, strncat, ins, fixed_to_str, str_to_fixed }
 
 let strcmp (str1, str2) be {
     let index = 0;
@@ -18,20 +18,9 @@ let strcmp (str1, str2) be {
     else resultis 1;            // str2 is a substring of str1
 }
 
-/*
-//Different strcmp logic
-//Returns 0 if str1 = str2, positive number if str1 > str2, and negative number if str 1 < str2
-let strcmp(str1, str2) be {
-  let index = 0;
-  while byte index of str1 = byte index of str2 do
-  {
-    if byte index of str1 = 0 then resultis 0;
-    index +:= 1
-  } 
-  
-  resultis ((byte index of str1) - (byte index of str2))
+let streq (str1, str2) be {
+    resultis strcmp(str1, str2) == 0;
 }
-*/
 
 /*
     copies a string from source to dest
@@ -51,22 +40,23 @@ let strcpy (dest, source) be {
     resultis dest;
 }
 
-let strncpy(destination, source, n) be {
-  let index = 0;
+let strncpy (destination, source, n) be {
+    let index = 0;
   
-  until index = n do
-  {
-    byte index of destination := byte index of source;
-    index +:= 1;
-  }
+    until index = n do {
+        byte index of destination := byte index of source;
+        index +:= 1;
+    }
 
-  if n = strlen(source) + 1 then byte index of destination := 0; 
-  resultis destination;
+    if n = strlen(source) + 1 then
+        byte index of destination := 0; 
+
+    resultis destination;
 }
 
 let strdup (source) be {
-    let start = newvec((1 + strlen(source)) / 4),
-        index = 0;
+    let start = newvec((1 + strlen(source)) / 4);
+    let index = 0;
 
     until byte index of source = 0 do {
         byte index of start := byte index of source;
@@ -132,7 +122,6 @@ let ins (A, size) be {
         if char = 8 then {
             test index > 0 then index -:= 1 else loop;
             // can't backspace if at index 0
-
             outch(' ');
             outch(8);
             loop;
@@ -164,8 +153,8 @@ let fixed_to_str (A, size, S) be {
 
 let str_to_fixed (S, A, size) be {
     let index = 0;
-    until byte index of S = 0 \/ index >= size do {
-    // while index < size /\ byte index of S <> 0 do {
+
+    until index >= size \/ byte index of S = 0 do {
         byte index of A := byte index of S;
         index +:= 1;
     }
