@@ -39,20 +39,20 @@ manifest {
 
 // read http://rabbit.eng.miami.edu/class/een521/hardware-2a.pdf
 let general_handler (int_code, int_addr, intx, PC, FP, SP) be {
-    switchon interrupt_code into {
-        case IV_MEMORY:         out("Physical memory access failed.\n"); break;        
-        case IV_PAGE_FAULT:     out("Page fault.\n"); break;
-        case IV_UN_IMP_OP_CODE: out("Unimplemented op-code.\n"); break;
+    switchon int_code into {
+        case IV_MEMORY:         out("Physical memory access failed.\n"); endcase;        
+        case IV_PAGE_FAULT:     out("Page fault.\n"); endcase;
+        case IV_UN_IMP_OP_CODE: out("Unimplemented op-code.\n"); endcase;
         // case IV_HALT: handle specifically
         // case IV_DIV_ZERO: handle specifically 
-        case IV_UN_WRIT_OP_CODE:out("Unwritable instruction operand.\n"); break;
+        case IV_UN_WRIT_OP_CODE:out("Unwritable instruction operand.\n"); endcase;
         // case IV_TIMER: handle specifically
-        case IV_PRIV_OP:        out("Privileged operation attempted by user mode program.\n"); break;
+        case IV_PRIV_OP:        out("Privileged operation attempted by user mode program.\n"); endcase;
         // case IV_KEYBD: handle specifically
-        case IV_BAD_CALL:       out("Bad system call index.\n"); break;
-        case IV_PAGE_PRIV:      out("User mode access to system mode page.\n"); break;
-        case IV_DEBUG:          out("Debug trap. Currently unimplemented.\n"); break;
-        case IV_INTERRUPT_FAULT:out("Unable to process interrupt.\n"); break;
+        case IV_BAD_CALL:       out("Bad system call index.\n"); endcase;
+        case IV_PAGE_PRIV:      out("User mode access to system mode page.\n"); endcase;
+        case IV_DEBUG:          out("Debug trap. Currently unimplemented.\n"); endcase;
+        case IV_INTERRUPT_FAULT:out("Unable to process interrupt.\n"); endcase;
     }
 
     out("Fatal interrupt. Shutting down.\n");
@@ -75,7 +75,7 @@ let init_interrupts () be {
     interrupt_vec ! IV_MEMORY           := general_handler;
     interrupt_vec ! IV_PAGE_FAULT       := general_handler;
     interrupt_vec ! IV_UN_IMP_OP_CODE   := general_handler;
-    interrupt_vec ! IV_HALT             := halt_hander;
+    interrupt_vec ! IV_HALT             := halt_handler;
     interrupt_vec ! IV_DIV_ZERO         := div_zero_handler;
     interrupt_vec ! IV_UN_WRIT_OP_CODE  := general_handler;
     interrupt_vec ! IV_TIMER            := timer_handler;
