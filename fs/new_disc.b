@@ -56,8 +56,10 @@ manifest {
     disc_data                   = 1,
 	// store the first 128 blocks of the free list in a vector
     disc_free_list              = 2,
+	//store the block for the current directory
+	disc_current_dir			= 3,
     // size in words of the disc_info vector
-    disc_info_size              = 3,
+    disc_info_size              = 4,
     block_length                = 128,
 
     /* ------------------------ */
@@ -102,6 +104,7 @@ let get_open_disc_slot () be {
             disc ! disc_has_changed := 0;
             disc ! disc_data := newvec(block_length);
 			disc ! disc_free_list := newvec(block_length);
+			disc ! disc_current_dir := newvec(block_length);
             DISCS ! i := disc;
 
             resultis DISCS + i;
@@ -120,10 +123,12 @@ let dismount (disc_info) be {
 
     if disc_info ! disc_has_changed then {
         devctl(DC_DISC_WRITE, disc_info ! disc_data ! SB_disc_number, SB_block_addr, ONE_BLOCK, disc_info ! disc_data);
+        devctl(DC_DISC_WRITE, disc_info ! disc_data ! SB_disc_number, disc_info ! disc_data ! SB_free_list_start, disc_info ! disc_data ! SB_free_list_size, disc_info ! disc_free_list);
     }
 
     freevec(disc_info ! disc_data);
     freevec(disc_info ! disc_free_list);
+	freevec(disc_info ! disc_current_dir);
     freevec(DISCS ! distance);
 
     DISCS ! distance := nil;
@@ -133,7 +138,7 @@ let dismount (disc_info) be {
 
 let mount (disc_number, disc_name) be {
     let buffer = vec block_length, bytes_read, length, disc_info;
-    let free_list_buffer = vec block_length;
+    let free_list_buffer = vec block_length, current_dir_buffer = vec block_length;
     let free_list_size = 0;
 
     bytes_read := devctl(DC_DISC_READ, disc_number, SB_block_addr, ONE_BLOCK, buffer);
@@ -154,7 +159,7 @@ let mount (disc_number, disc_name) be {
         resultis -1;
     }
 
-    unless strcmp(disc_name, buffer + SB_name) = 0 do {
+    unless streq(disc_name, buffer + SB_name) do {
         out("Cannot mount disc %d ('%s') with name '%s'. Incorrect name.\n", disc_number, buffer + SB_name, disc_name);
         resultis -1;
     }
@@ -171,8 +176,12 @@ let mount (disc_number, disc_name) be {
     free_list_size := buffer ! SB_free_list_size;
 
     bytes_read := devctl(DC_DISC_READ, disc_number, buffer ! SB_free_list_start, ONE_BLOCK, free_list_buffer);
-
     copy_buffer(free_list_buffer, disc_info ! disc_free_list, block_length);
+
+	bytes_read := devctl(DC_DISC_READ, disc_number, buffer ! SB_root_dir, ONE_BLOCK, current_dir_buffer);
+    copy_buffer(current_dir_buffer, disc_info ! disc_current_dir, block_length);
+
+	//out("In mount, free list starts %d, root dir on %d, free list size %d\n", buffer ! SB_free_list_start, buffer ! SB_root_dir, free_list_size);
 
     resultis disc_info;
 }
@@ -241,13 +250,12 @@ let format_disk (disc_number, disc_name, force_write) be {
 
     clear_buffer(buffer, block_length);
 
+    bytes_written := devctl(DC_DISC_WRITE, disc_number, root_dir_block_addr, ONE_BLOCK, buffer);
+	clear_buffer(buffer, block_length);
+
     bytes_written := devctl(DC_DISC_WRITE, disc_number, free_list_block_addr, free_list_size, buffer);
 
-    clear_buffer(buffer, block_length);
-
     // create_empty_directory(buffer); // optional, since we're writing all 0s anyway
-
-    bytes_written := devctl(DC_DISC_WRITE, disc_number, root_dir_block_addr, ONE_BLOCK, buffer);
 
     // no need to print an error statement since only 0s are being written
 
