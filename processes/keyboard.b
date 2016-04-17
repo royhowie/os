@@ -3,7 +3,7 @@ import "io"
 export {
     keyboard_handler,
     init_keyboard,
-    new_inch,
+    new_inch
 }
 
 manifest {
@@ -15,7 +15,7 @@ manifest {
     KB_BUFF_NUM     = 2,
     KB_BUFF_LINES   = 3,
     SIZEOF_KB_INFO  = 4,
-    KB_INFO         = vec SIZEOF_KB_INFO,
+    KB_INFO         = vec SIZEOF_KB_INFO
 }
 
 let init_keyboard () be {
@@ -38,7 +38,7 @@ let kb_add (char) be {
     byte (KB_INFO ! KB_BUFF_END) of KB_BUFF := char;
 
     // If the character was a newline, inc KB_BUFF_LINES
-    if c = '\n' then
+    if char = '\n' then
         KB_INFO ! KB_BUFF_LINES +:= 1;
 
     // Increment the number of characters in buffer.

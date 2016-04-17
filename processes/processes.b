@@ -5,7 +5,7 @@ export {
     make_process,
     halt_handler, 
     div_zero_handler,
-    init_processes,
+    init_processes
 }
 
 
@@ -164,7 +164,7 @@ and make_process (program_counter, stack_pointer) be {
     let index = 0;
 
     // should also check that the process table isn't filled
-    until process_table ! index = nil do index += 1;
+    until process_table ! index = nil do index +:= 1;
 
     // add the process to the table
     process_table ! index := process;
@@ -237,7 +237,7 @@ let div_zero_handler (int_code, int_addr, intx, PC, FP, SP) be {
 }
 
 let idle_process () be {
-    while true assembly { pause };
+    while true do assembly { pause };
 }
 
 manifest {
