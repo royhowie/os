@@ -64,7 +64,7 @@ manifest {
 static {
     current_process     = 0;
     number_processes    = 0;
-    process_table       = vec 5
+    process_table       = vec 64
 }
 /*
     This method is called when a timer interrupt is set off.
