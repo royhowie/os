@@ -19,7 +19,7 @@ let strcmp (str1, str2) be {
 }
 
 let streq (str1, str2) be {
-    resultis strcmp(str1, str2) == 0;
+    resultis strcmp(str1, str2) = 0;
 }
 
 /*
