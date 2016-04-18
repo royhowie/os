@@ -2,7 +2,8 @@ import "io"
 import "strings"
 
 export {
-    open, close, create, delete_file, ls, read_byte, write_byte, eof,
+    open, close, create, delete_file,
+    ls, read_byte, write_byte, eof,
     get_file_size_in_blocks
 }
 
@@ -359,5 +360,5 @@ let close (file) be {
     freevec(file ! FT_buffer);
     freevec(file);
 
-    FILE_TABLE ! index := nil;    
+    FILE_TABLE ! index := nil;
 }
