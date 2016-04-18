@@ -1,6 +1,5 @@
 import "io"
 import "strings"
-import "files"
 
 export { format_disc, mount, dismount }
 
@@ -129,7 +128,16 @@ manifest {
 
     // Pointer to 128-word vector containing the header
     // block of the file.
-    FT_header                   = 0,
+    // FT_header                   = 0,
+
+    // Pointer to vector of length 2 * levels
+    // following the pattern
+    //  0:  pointer to block containing level 0 (head)
+    //  1:  offset within block level 0
+    //  2:  pointer to block indicated by block0[offset0]
+    //  3:  offset within block level 1
+    //  ...
+    FT_block_tree               = 0,
 
     // Pointer to 128-word vector to be used for reading
     // and writing data to/from a file.
@@ -173,7 +181,7 @@ manifest {
     FH_length                   = 4,
 
     // Block number of directory containing this file.
-    FH_parent_directory         = 5,
+    FH_parent_dir               = 5,
     
     // Name of file or directory. Can be up to 4 words long.
     FH_name                     = 6,
@@ -204,7 +212,7 @@ let get_open_disc_slot () be {
 
             disc ! disc_has_changed := 0;
             disc ! disc_data := newvec(BLOCK_LEN);
-    		disc ! disc_free_list := newvec(BLOCK_LEN);
+    		disc ! disc_FBL_window := newvec(BLOCK_LEN);
     		disc ! disc_current_dir := newvec(BLOCK_LEN);
             DISCS ! i := disc;
 
@@ -224,15 +232,18 @@ let write_to_disc (disc_number, offset, num_blocks, buff) be {
 
 let dismount (disc_info) be {
     let distance = disc_info - DISCS;
+    let disc_number;
 
     if distance < 0 \/ 32 <= distance then {
         out("Invalid disc pointer to dismount!\n");
         resultis -1;
     }
 
+    // Only need to write to disc if the in-memory data has been changed.
     if disc_info ! disc_has_changed then {
-        let disc_number := disc_info ! disc_data ! SB_disc_number;
+        disc_number := disc_info ! disc_data ! SB_disc_number;
 
+        // First, write the super block back to disc.
         if write_to_disc(
             disc_number,
             SB_block_addr,
@@ -243,12 +254,13 @@ let dismount (disc_info) be {
             resultis -1;
         }
     
+        // Next, write the window into the FBL.
         if write_to_disc(
             disc_number,
-            disc_info ! disc_data ! SB_free_list_start,
-            disc_info ! disc_data ! SB_free_list_size,
-            disc_info ! disc_free_list
-        ) <= then {
+            disc_info ! disc_data ! SB_FBL_index,
+            ONE_BLOCK, 
+            disc_info ! disc_FBL_window
+        ) <= 0 then {
             out("Unable to save list of free blocks!\n");
             resultis -1;
         }
@@ -256,7 +268,7 @@ let dismount (disc_info) be {
     }
 
     freevec(disc_info ! disc_data);
-    freevec(disc_info ! disc_free_list);
+    freevec(disc_info ! disc_FBL_window);
     freevec(disc_info ! disc_current_dir);
     freevec(DISCS ! distance);
 
@@ -349,7 +361,7 @@ let format_disc (disc_number, disc_name, force_write) be {
     let buffer = vec BLOCK_LEN, length = strlen(disc_name);
     let free_blocks = devctl(DC_DISC_CHECK, disc_number);
     let fb_block_num = free_blocks - 1, fb_boundary;
-    let root_dir, disc_info;
+    let root_dir_bn;
 
     // If not passed the correct number of arguments, return;
     unless 1 < numbargs() < 4 do {
@@ -449,6 +461,8 @@ let format_disc (disc_number, disc_name, force_write) be {
 
     // Root directory will be located directly after the FBL. 
     buffer ! SB_root_dir            := 1 + (buffer ! SB_FBL_size);
+    // And store the root dir block number for future use.
+    root_dir_bn := buffer ! SB_root_dir;
 
     // Save the super block to disc. Report error, if any.
     if write_to_disc(
@@ -488,21 +502,27 @@ let format_disc (disc_number, disc_name, force_write) be {
         }
     }
 
-    // Mount the formatted disc.
-    disc_info := mount(disc_number, disc_name); 
+    // Manually create the root directory.
+    clear_buffer(buffer, BLOCK_LEN); 
 
-    if disc_info = -1 then {
+    buffer ! FH_levels          := 0;
+    buffer ! FH_type            := FT_DIRECTORY;
+    buffer ! FH_date_created    := seconds();
+    buffer ! FH_date_accessed   := buffer ! FH_date_created;
+    buffer ! FH_length          := 0;
+    buffer ! FH_parent_dir      := 0;
+    strcpy("root", buffer + FH_name);
+
+    if write_to_disc(
+        disc_number,
+        root_dir_bn,
+        ONE_BLOCK,
+        buffer
+    ) <= 0 then {
         out("Unable to create root directory!\n");
-        resultis 1;
+        resultis -1;
     }
 
-    // Create the root directory.
-    root_dir := create_file(disc_info, "root", FT_DIRECTORY);
-
-    disc_info ! disc_data ! SB_root_dir := root_dir ! FILE_HEADER_BLOCK;
-    disc_info ! disc_has_changed := true;
-
-    dismount(disc_info);
-
-    resultis true;
+    // Otherwise, return 1 to indicate success;
+    resultis 1;
 }
