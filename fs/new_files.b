@@ -275,38 +275,67 @@ let add_byte_to_file_buffer (file, data) be {
 let write_byte (file, data) be {
     let block_tree = file ! FT_block_tree;
     let file_header = block_tree ! 0;
+    let fh_offset = block_tree ! 1;
     let levels = file_header ! FH_levels;
-    let offset = block_tree ! 1;
-    let free_block;
+    let free_block, curr_buff, curr_offset;
 
     unless file ! FT_direction = 'w' do {
         out("File '%s' is not currently opened for writing.\n", file ! FT_file_name);
         resultis FT_EOF;
     }
 
+    file ! FT_modified := true;
+
     // If the entry is 0, then a block needs to be
     // allocated before anything can be written.
-    if levels = 1 /\ file_header ! offset = 0 then {
-       free_block := 
-    } 
+    if levels = 1 /\ file_header ! fh_offset = 0 then {
+        free_block := get_free_block(file ! FT_disc);
+        block_tree ! 2 := newvec(BLOCK_LEN);
+        block_tree ! 3 := 0;
 
+        file_header ! fh_offset := free_block;
 
+        // Clear the buffer so no junk is left over.
+        clear_buffer(block_tree ! 2, BLOCK_LEN);
 
-    for index = 0 to levels - 1 do {
-        let current_buff = block_tree ! (2 * index);
-        let offset = block_tree ! (2 * index - 1);
-
-        // 
-        if current_buff ! offset = 0 then {
-
-        } 
+        // Write the empty block to disc.
+        write_to_disc(
+            file ! FT_disc_number,
+            free_block,
+            ONE_BLOCK,
+            block_tree ! 2
+        )
     }
 
+    // Add the byte to a leaf at the end of the block tree.
+    curr_buff := block_tree ! (2 * levels - 2);
+    curr_offset := block_tree ! (2 * levels - 1);
+
+    // If the current offset within a leaf is less than 511,
+    // then just add the byte to the buffer and then increment
+    // the offset.
+    // Return 1 to indicate success.
+    if curr_offset < 511 then {
+        byte curr_offset of curr_buff := data;
+        block_tree ! (2 * levels - 1) +:= 1;
+        resultis 1;
+    }
+
+    // Otherwise, the leaf buffer will be full after writing
+    // the next byte, so
+    //      1. add byte to buffer
+    //      2. write buffer to disc
+    //      3. obtain the next block
+    //      4. load it as a leaf node
+    //      5. recurse, if necessary.
 
 
+    for index = levels - 1 to 0 by -1 do {
+        let buff = block_tree ! (2 * index);
+        let offset = block_tree ! (2 * index + 1);
 
-
-
+        if index = levels 
+    }
 }
 
 
