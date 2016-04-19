@@ -1,5 +1,6 @@
 import "io"
 import "strings"
+import "helpers"
 
 export { format_disc, mount, dismount }
 
@@ -16,7 +17,7 @@ manifest {
     // the super block for useful pieces of data.
 
     // SB_FBL = super block free block list
-
+    //
     // This represents where the FBL starts.
     // Remember, the FBL operates like a stack,
     // so the start will be
@@ -110,8 +111,7 @@ manifest {
     // window (one block) into the free block list.
     disc_FBL_window             = 2,
 
-    // Pointer to the 128-word header block of
-    // the current directory file.
+    // FILE* to the current directory.
     disc_current_dir            = 3,
 
     // size in words of the disc_info vector
@@ -124,7 +124,7 @@ manifest {
     FILE_TABLE_SIZE             = 32,
     FILE_TABLE                  = vec FILE_TABLE_SIZE,
 
-    FT_ENTRY_SIZE               = 6,
+    FT_ENTRY_SIZE               = 4,
 
     // Pointer to 128-word vector containing the header
     // block of the file.
@@ -139,23 +139,14 @@ manifest {
     //  ...
     FT_block_tree               = 0,
 
-    // Pointer to 128-word vector to be used for reading
-    // and writing data to/from a file.
-    FT_buffer                   = 1,
-    FT_buffer_size              = 512,
-    FT_buffer_size_in_words     = 128,
-
-    // Position within F_buffer.
-    FT_buffer_offset            = 2,
-
     // Is the file being read ('R') or written to ('W')? 
-    FT_direction                = 3,
+    FT_direction                = 1,
 
     // Has the file header been modified?
-    FT_modified                 = 4,
+    FT_modified                 = 2,
 
     // Disc number on which file is located.
-    FT_disc_number              = 5,
+    FT_disc_number              = 3,
 
     // FH = File Header
     // These constants serve as pointed to data within
@@ -177,26 +168,26 @@ manifest {
     FH_date_created             = 2,
     FH_date_accessed            = 3,
 
-    // Length of the file in bytes.
+    // Length of the file in bytes, if a file.
+    // Otherwise, the number of directory entries.
     FH_length                   = 4,
 
     // Block number of directory containing this file.
     FH_parent_dir               = 5,
+
+    // Block number where the file header is located.
+    FH_current_block            = 6,
     
     // Name of file or directory. Can be up to 4 words long.
-    FH_name                     = 6,
+    FH_name                     = 7,
     FH_name_len                 = 32,
 
-    FH_first_word               = 10,
+    FH_first_word               = 11,
 
     FT_EOF                      = -1,
     FT_FILE                     = 'F',
     FT_DIRECTORY                = 'D'
 }
-
-let min (a, b) = a < b -> a, b;
-let clear_buffer (buffer, length) be for i = 0 to length - 1 do buffer ! i := 0;
-let copy_buffer (source, dest, length) be for i = 0 to length - 1 do dest ! i := source ! i;
 
 let disc_is_formatted (buffer) be {
     let remainder = buffer ! SB_format_check;
@@ -213,21 +204,12 @@ let get_open_disc_slot () be {
             disc ! disc_has_changed := 0;
             disc ! disc_data := newvec(BLOCK_LEN);
     		disc ! disc_FBL_window := newvec(BLOCK_LEN);
-    		disc ! disc_current_dir := newvec(BLOCK_LEN);
             DISCS ! i := disc;
 
             resultis DISCS + i;
         }
     }
     resultis -1;
-}
-
-let check_disc (disc_number) be devctl(DC_DISC_CHECK, disc_number);
-let read_from_disc (disc_number, block, num_blocks, buff) be {
-    resultis devctl(DC_DISC_READ, disc_number, block, num_blocks, buff);
-}
-let write_to_disc (disc_number, offset, num_blocks, buff) be {
-    resultis devctl(DC_DISC_WRITE, disc_number, offset, num_blocks, buff);
 }
 
 let dismount (disc_info) be {
@@ -269,7 +251,6 @@ let dismount (disc_info) be {
 
     freevec(disc_info ! disc_data);
     freevec(disc_info ! disc_FBL_window);
-    freevec(disc_info ! disc_current_dir);
     freevec(DISCS ! distance);
 
     DISCS ! distance := nil;
@@ -333,27 +314,15 @@ let mount (disc_number, disc_name) be {
         resultis -1;
     }
 
-    // Otherwise, copy the FBL window into the correct buffer
-    // under disc_info.
+    // Copy the FBL window into the correct buffer under disc_info.
+    // Make sure to allocate a vector first.
+    disc_info ! disc_FBL_window := newvec(BLOCK_LEN);
     copy_buffer(buffer, disc_info ! disc_FBL_window, BLOCK_LEN);
 
-    // Clean the `buffer` again.
-    clear_buffer(buffer, BLOCK_LEN);
+    // Set the current directory equal to the root directory.
+    disc_info ! disc_current_dir := disc_info ! disc_data ! SB_root_dir;
 
-    if read_from_disc(
-        disc_number,
-        disc_info ! disc_data ! SB_root_dir,
-        ONE_BLOCK,
-        buffer
-    ) <= 0 then {
-        out("Unable to mount disc. Cannot read root directory.\n");
-        resultis -1;
-    }
-
-    // Copy the current directory into the appropriate place
-    // under disc_info.
-    copy_buffer(buffer, disc_info ! disc_current_dir, BLOCK_LEN);
-
+    // Return the DISC* object.
     resultis disc_info;
 }
 
@@ -511,7 +480,7 @@ let format_disc (disc_number, disc_name, force_write) be {
     buffer ! FH_date_accessed   := buffer ! FH_date_created;
     buffer ! FH_length          := 0;
     buffer ! FH_parent_dir      := 0;
-    strcpy("root", buffer + FH_name);
+    strcpy(buffer + FH_name, "root");
 
     if write_to_disc(
         disc_number,
@@ -523,6 +492,6 @@ let format_disc (disc_number, disc_name, force_write) be {
         resultis -1;
     }
 
-    // Otherwise, return 1 to indicate success;
+    // Otherwise, return 1 to indicate success.
     resultis 1;
 }
