@@ -16,6 +16,8 @@ let min (a, b) = a < b -> a, b;
 let max (a, b) = a > b -> a, b;
 
 let copy_buffer (source, dest, length) be for i = 0 to length - 1 do dest ! i := source ! i;
+let copy_block (source, dest) be copy_buffer(source, dest, BLOCK_LEN);
+
 let clear_buffer (buffer, length) be for i = 0 to length - 1 do buffer ! i := 0;
 let clear_block (buffer) be clear_buffer(buffer, BLOCK_LEN);
 

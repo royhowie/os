@@ -1,6 +1,8 @@
 #!/bin/bash
 # to run: ./manifest input_file output_file
 
+export FNAME=tmp_$RANDOM
+
 # remove comments and blank lines
 grep -v '//' $1 | grep -v '/\*' | grep -ve '^$' | sort -f > $FNAME.withoutcomments
 
