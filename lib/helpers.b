@@ -10,12 +10,14 @@ export {
     write_to_disc
 }
 
+manifest { BLOCK_LEN = 128 }
 
 let min (a, b) = a < b -> a, b;
 let max (a, b) = a > b -> a, b;
 
 let copy_buffer (source, dest, length) be for i = 0 to length - 1 do dest ! i := source ! i;
 let clear_buffer (buffer, length) be for i = 0 to length - 1 do buffer ! i := 0;
+let clear_block (buffer) be clear_buffer(buffer, BLOCK_LEN);
 
 let check_disc (disc_number) be devctl(DC_DISC_CHECK, disc_number);
 
