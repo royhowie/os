@@ -1,54 +1,40 @@
-export FNAME=temp_file_$RANDOM
+#!/bin/bash
+# to run: ./manifest input_file output_file
 
-# create a temporary output file
-touch $FNAME
+# remove comments and blank lines
+grep -v '//' $1 | grep -v '/\*' | grep -ve '^$' | sort -f > $FNAME.withoutcomments
 
-# remove comments
-grep -v '//' $1 > $FNAME.withoutcomments
+# blank the output file
+cat /dev/null > $2
 
-# remove all white-space characters and store in $FNAME
-sed -E "s/[\s]+//" $FNAME.withoutcomments  > $FNAME
+# begin manifest
+echo -n 'manifest{' >> $2
 
-# reformat the constants
-sed -E "s/([a-zA-Z0-9_]+)[         ]+([a-zA-Z0-9_]+)/\1 = \2, /" $FNAME > $FNAME.tmp
+# Read through the file line by line. 
+# On each line, apply
+#   sed s/\s*//g;       remove all whitespace
+#   sed s/$/,/;         replace newlines with commas
+#   print the result
+# Pass to tr and remove all newline characters
+# Reverse the output
+# Remove the last two characters (last newline and comma)
+# Reverse again and append to the output file
+perl -lne 's/\s*//g; s/$/,/g; print' < $FNAME.withoutcomments | tr -d '\n' | rev | cut -c 2- | rev >> $2
+# perl -lne 's/\s*//g; s/$/,/; print' < $FNAME.withoutcomments | rev | cut -c 2- | rev >> $2
 
-# remove newline characters (requires file shuffle)
-mv $FNAME.tmp $FNAME
-tr -d '\n' < $FNAME > $FNAME.tmp
-mv $FNAME.tmp $FNAME
+# end manifest
+echo '}' >> $2
 
-# start the manifest
-echo -n "manifest { " > $FNAME.tmp
+# begin export block
+echo -n 'export {' >> $2
 
-# append the constants
-cat $FNAME >> $FNAME.tmp
+# Like before, read through the file line by line.
+# Except this time, delete everything after the first
+# space. This effectively grabs every variable name
+# from $FNAME.withoutcomments.
+perl -lne 's/\s+.*/,/; print' < $FNAME.withoutcomments | tr -d '\n' | rev | cut -c 3- | rev >> $2
 
-# delete the temp file
-mv $FNAME.tmp $FNAME
+# end constant block
+echo -n '}' >> $2
 
-# remove the trailing characters
-cat $FNAME | rev | cut -c 3- | rev > $FNAME.tmp
-mv $FNAME.tmp $FNAME
-
-# end the manifest
-echo -n " }" >> $FNAME
-
-tr -d '\n' < $FNAME > $FNAME.tmp
-mv $FNAME.tmp $2
-rm $FNAME
-
-# grab the constants without values and print them in $FNAME.tmp
-perl -lne 's/\s+.*/, /; print' < $FNAME.withoutcomments | tr -d '\n' | rev | cut -c 3- | rev > $FNAME.tmp
-
-# 0. add a newline
-# 1. begin export struct
-# 2. add constants from perl command
-# 3. close export struct
-echo "" >> $2
-echo -n "export { " >> $2
-echo -n $(cat $FNAME.tmp) >> $2
-echo -ne " }\c" >> $2
-
-# remove the temporary files
-rm $FNAME.tmp
 rm $FNAME.withoutcomments
