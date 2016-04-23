@@ -2,6 +2,7 @@ import "io"
 import "strings"
 import "helpers"
 import "fs-constants"
+import "blocktree"
 
 export {
     open, close, create, delete_file,
@@ -488,13 +489,11 @@ and open_dir (disc_info, block_number, direction) be {
 }
 
 let create_FT_entry (file_buffer, disc_number, direction) be {
-    // Grab the levels in this file from the header.
-    let levels := file_buffer ! FH_levels;
+    let index = 0, FILE;
     let file_open := file_already_open(file_buffer + FH_name, disc_number);
-    let index = 0;
 
     // If the file is already open, then just return its entry.
-    unless file_open = nil resultis file_open;
+    unless file_open = nil do resultis file_open;
 
     // Search for a null entry in the file table.
     until index = FILE_TABLE_SIZE \/ (FILE_TABLE ! index) = nil do
@@ -508,68 +507,28 @@ let create_FT_entry (file_buffer, disc_number, direction) be {
     }
 
     // Create a file entry and store it in the file table.
-    file_entry := newvec(FT_ENTRY_SIZE);
+    FILE := newvec(FT_ENTRY_SIZE);
     FILE_TABLE ! index := file_entry;
 
-    // Next, read a partial block tree into memory.
-    // FT_block_tree will be a vector of length
-    // 2 * levels and will follow the pattern
-    //  0:  buffer_level_1
-    //  1:  offset within buffer_level_1
-    //  2:  buffer_level_2
-    //  3:  offset within buffer_level_2
-    //  ...
-    // Thus, create a vector for the block tree.
-    file_entry ! FT_block_tree := newvec(2 * levels);
-
-    // The first entry is a part of the header block,
-    // so enter it manually:
-    file_entry ! FT_block_tree ! 0 := newvec(BLOCK_LEN);
-    file_entry ! FT_block_tree ! 1 := FH_first_word;
-    copy_buffer(file_buffer, file_entry ! FT_block_tree ! 0, BLOCK_LEN);
-
-    // If the block tree has more than 1 level, then need to loop
-    // and collect the other parts of the partial block tree.
-    if 1 < levels then
-        for i = 1 to levels - 1 do {
-            let prev_entry_buff = file_entry ! FT_block_tree ! (2 * i - 2); 
-            let prev_entry_offset = file_entry ! FT_block_tree ! (2 * i - 1);
-
-            // If the entry at the offset within the buffer is nil,
-            // then there is no attached block.
-            // This is a guard clause for a newly minted file
-            // without any attached blocks of data.
-            if prev_entry_buff ! prev_entry_offset = 0 then break;
-
-            // Otherwise, create a buffer a block long and record its
-            // offset (which will be zero since file is being opened).
-            file_entry ! FT_block_tree ! (2 * i) := newvec(BLOCK_LEN);
-            file_entry ! FT_block_tree ! (2 * i + 1) := 0;
-
-            // The block number of the next step in the block tree
-            // is record at prev_entry_buff ! prev_entry_offset,
-            // so copy it into the current buffer.
-            read_from_disc(
-                disc_number,
-                prev_entry_buff ! prev_entry_offset,
-                ONE_BLOCK,
-                file_entry ! FT_block_tree ! (2 * i)                
-            );
-        }
-
     // Record the direction (r or w) of the file being opened.
-    file_entry ! FT_direction := direction;
+    FILE ! FT_direction := direction;
 
     // Record a pointer to the disc object.
-    file_entry ! FT_disc := disc_info;
+    FILE ! FT_disc := disc_info;
 
     // Record the disc number.
-    file_entry ! FT_disc_number := disc_info ! disc_data ! SB_disc_number;
+    FILE ! FT_disc_number := disc_number;
 
     // And, naturally, the file has not yet been modified.
-    file_entry ! FT_modified := false;
+    FILE ! FT_modified := false;
 
-    resultis file_entry;
+    if init_block_tree(FILE, file_buffer, disc_number) = -1 then {
+        // Ideally, should clean up block tree if initialization fails.
+        out("Oh no! Unable to initialize block tree correctly!\n");
+        resultis nil;
+    }
+
+    resultis FILE;
 }
 
 and add_dir_entry (disc_info, fname, block, size, type, date) {
