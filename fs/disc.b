@@ -42,10 +42,9 @@ let dismount (disc_info) be {
         disc_number := disc_info ! disc_data ! SB_disc_number;
 
         // First, write the super block back to disc.
-        if write_to_disc(
+        if write_block(
             disc_number,
             SB_block_addr,
-            ONE_BLOCK,
             disc_info ! disc_data
         ) <= 0 then {
             out("Unable to save super block!\n");
@@ -53,10 +52,9 @@ let dismount (disc_info) be {
         }
     
         // Next, write the window into the FBL.
-        if write_to_disc(
+        if write_block(
             disc_number,
             disc_info ! disc_data ! SB_FBL_index,
-            ONE_BLOCK, 
             disc_info ! disc_FBL_window
         ) <= 0 then {
             out("Unable to save list of free blocks!\n");
@@ -79,7 +77,7 @@ let mount (disc_number, disc_name) be {
     let buffer = vec BLOCK_LEN, length, disc_info;
 
     // Attempt to read the super block into `buffer`.
-    if read_from_disc(disc_number, SB_block_addr, ONE_BLOCK, buffer) <= 0 then {
+    if read_block(disc_number, SB_block_addr, buffer) <= 0 then {
         out("Unable to read disc %d!\n", disc_number);
         resultis -1;
     }
@@ -113,19 +111,14 @@ let mount (disc_number, disc_name) be {
     }
 
     // Copy `buffer` into `disc_info ! disc_data`
-    copy_buffer(buffer, disc_info ! disc_data, BLOCK_LEN);
+    copy_block(buffer, disc_info ! disc_data);
 
     // Clean `buffer` so it doesn't have any crap left in it.
-    clear_buffer(buffer, BLOCK_LEN); 
+    clear_block(buffer);
 
     // Read the current window into the FBL into memory.
     // If unable to read, return.
-    if read_from_disc(
-        disc_number,
-        disc_info ! disc_data ! SB_FBL_index,
-        ONE_BLOCK,
-        buffer
-    ) <= 0 then {
+    if read_block(disc_number, disc_info ! disc_data ! SB_FBL_index, buffer) <= 0 then {
         out("Unable to mount disc. Cannot read free block list.\n");
         resultis -1;
     }
@@ -250,12 +243,7 @@ let format_disc (disc_number, disc_name, force_write) be {
     root_dir_bn := buffer ! SB_root_dir;
 
     // Save the super block to disc. Report error, if any.
-    if write_to_disc(
-        disc_number,
-        SB_block_addr,
-        ONE_BLOCK,
-        buffer
-    ) <= 0 then {
+    if write_block(disc_number, SB_block_addr, buffer) <= 0 then {
         out("Unable to save super block to disc %d!\n", disc_number);
         resultis -1;
     }
@@ -281,7 +269,7 @@ let format_disc (disc_number, disc_name, force_write) be {
             fb_block_num -:= 1;
         }
 
-        if write_to_disc(disc_number, FBL_block, ONE_BLOCK, buffer) <= 0 then {
+        if write_block(disc_number, FBL_block, buffer) <= 0 then {
             out("Unable to write free block list entry %d to disc %d!\n", FBL_block, disc_number);
             resultis -1;
         }
@@ -298,12 +286,7 @@ let format_disc (disc_number, disc_name, force_write) be {
     buffer ! FH_parent_dir      := 0;
     strcpy(buffer + FH_name, "root");
 
-    if write_to_disc(
-        disc_number,
-        root_dir_bn,
-        ONE_BLOCK,
-        buffer
-    ) <= 0 then {
+    if write_block(disc_number, root_dir_bn, buffer) <= 0 then {
         out("Unable to create root directory!\n");
         resultis -1;
     }

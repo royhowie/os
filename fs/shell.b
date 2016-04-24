@@ -2,6 +2,7 @@ import "files"
 import "disc"
 import "strings"
 import "io"
+import "fs-constants"
 
 let start () be {
     let current_disc, current_file, disc_number, data, heap = vec 10000;
@@ -12,7 +13,6 @@ let start () be {
         let cmd = vec 10;
         out("> ");
         ins(cmd, 39);
-        
 
         if strcmp(cmd, "format") = 0 then {
             out("disc number: ");
@@ -20,7 +20,7 @@ let start () be {
             out("enter a name: ");
             ins(cmd, 31);
 
-            test format_disk(disc_number, cmd, true) > 0 then
+            test format_disc(disc_number, cmd, true) > 0 then
                 out("successfully formatted disc %d with name '%s'.\n", disc_number, cmd)
             else
                 out("failed to mount disc %d with name '%s'\n", disc_number, cmd);
@@ -76,15 +76,13 @@ let start () be {
                 loop;
             }
 
-            out("file name (11 chars max): ");
-            ins(cmd, 11);
-            out("How many blocks to allocate? (512 bytes each) ");
-            disc_number := inno();
+            out("file name (31 chars max): ");
+            ins(cmd, 31);
 
-            test create(current_disc, cmd, disc_number) > 0 then
-                out("%d blocks allocated to file '%s'\n", disc_number, cmd)
+            test create(current_disc, cmd, FT_FILE) > 0 then
+                out("Successfully created file '%s'\n", cmd)
             else
-                out("Unable to allocate %d blocks to create file '%s'.\n", disc_number, cmd);
+                out("Unable to create file '%s'.\n", cmd);
              
             loop;
         }
@@ -108,14 +106,7 @@ let start () be {
             }
 
             out("-- begin file --\n");
-
-            blocks_available := get_file_size_in_blocks(current_file);
-
-            for i = 0 to (blocks_available * 512) - 1 do {
-                let c = read_byte(current_file);
-                if c = -1 then break;
-                outch(c);
-            }
+            while not eof(current_file) do outch(read_byte(current_file));
 
             out("\n-- end file --\n");
 
@@ -143,17 +134,12 @@ let start () be {
                 loop;
             }
 
-            blocks_available := get_file_size_in_blocks(current_file);
-
-            out("blocks_available %d\n", blocks_available);
-
-            out("Enter up to %d bits of data (^X to stop):\n", blocks_available * 512);
-
-            for i = 0 to (blocks_available * 512) - 1 do {
+            while true do {
                 ins(holder, 1);
-                if byte 0 of holder = 'X'-64 then break;
-                write_byte(current_file, holder ! 0);
+                if byte 0 of holder = 'X' - 64 then break;
+                write_byte(current_file, byte 0 of holder);
             }
+
             out("\n-- finishing writing data --\n");
 
             close(current_file);
@@ -172,7 +158,7 @@ let start () be {
             out("file to delete: ");
             ins(cmd, 11);
 
-            test delete_file(current_disc, cmd) > 0 then 
+            test delete(current_disc, cmd) > 0 then 
                 out("'%s' deleted!\n", cmd)
             else 
                 out("Failed to delete '%s'!\n", cmd);
