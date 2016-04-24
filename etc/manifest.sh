@@ -4,7 +4,7 @@
 export FNAME=tmp_$RANDOM
 
 # remove comments and blank lines
-grep -v '//' $1 | grep -v '/\*' | grep -ve '^$' | sort -f > $FNAME.withoutcomments
+grep -v '//' $1 | grep -v '/\*' | grep -ve '^$' > $FNAME.withoutcomments
 
 # blank the output file
 cat /dev/null > $2
