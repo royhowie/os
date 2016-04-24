@@ -225,9 +225,12 @@ and create (disc_info, file_name, type) be {
     // Directories should have ./ and ../ entries.
     // This should probably involve a change of directories function.
     if type = FT_DIRECTORY then {
-        open_dir(disc_info, free_block, FT_BOTH);
+        open(disc_info, file_name, FT_BOTH);
+
         add_dir_entry(disc_info, "./", free_block, 0, FT_DIRECTORY, buffer ! FH_date_created);
         add_dir_entry(disc_info, "../", parent_block_number, 0, FT_DIRECTORY, seconds());
+
+        open(disc_info, "../", FT_BOTH);
     }
 
     resultis 1;

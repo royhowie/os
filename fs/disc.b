@@ -129,7 +129,8 @@ let mount (disc_number, disc_name) be {
     copy_buffer(buffer, disc_info ! disc_FBL_window, BLOCK_LEN);
 
     // Set the current directory equal to the root directory.
-    disc_info ! disc_current_dir := disc_info ! disc_data ! SB_root_dir;
+    disc_info ! disc_current_dir := open_dir(disc_info,
+        disc_info ! disc_data ! SB_root_dir, FT_both);
 
     // Return the DISC* object.
     resultis disc_info;

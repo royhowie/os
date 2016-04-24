@@ -96,7 +96,7 @@ let start () be {
             }
             
             out("file to read: ");
-            ins(cmd, 11);
+            ins(cmd, 31);
 
             current_file := open(current_disc, cmd, 'r');
 
@@ -125,7 +125,7 @@ let start () be {
             }
 
             out("file to write to: ");
-            ins(cmd, 11);
+            ins(cmd, 31);
 
             current_file := open(current_disc, cmd, 'w');
 
