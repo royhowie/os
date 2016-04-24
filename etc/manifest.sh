@@ -34,7 +34,7 @@ echo -n 'export {' >> $2
 # Except this time, delete everything after the first
 # space. This effectively grabs every variable name
 # from $FNAME.withoutcomments.
-perl -lne 's/\s+.*/,/; print' < $FNAME.withoutcomments | tr -d '\n' | rev | cut -c 3- | rev >> $2
+perl -lne 's/\s+.*/,/; print' < $FNAME.withoutcomments | tr -d '\n' | rev | cut -c 2- | rev >> $2
 
 # end constant block
 echo -n '}' >> $2
