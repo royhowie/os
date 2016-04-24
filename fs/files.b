@@ -167,7 +167,7 @@ and file_already_open (block_number, disc_number) be {
 }
 
 and create (disc_info, file_name, type) be {
-    let buffer = vec 128;
+    let buffer = vec BLOCK_LEN;
     let disc_number = disc_info ! disc_data ! SB_disc_number;
     let free_block = -1, parent_block_number;
 
@@ -238,7 +238,7 @@ and create (disc_info, file_name, type) be {
 
 and open_dir (disc_info, block_number, direction) be {
     let disc_number = disc_info ! disc_data ! SB_disc_number;
-    let buffer = vec 128;
+    let buffer = vec BLOCK_LEN;
 
     // Read header file into memory
     if read_block(disc_number, block_number, buffer) <= 0 then {
@@ -314,7 +314,7 @@ and add_dir_entry (disc_info, fname, block_num, size, type, date) be {
 }
 
 and open (disc_info, file_name, direction) be {
-    let buffer = vec 128;
+    let buffer = vec BLOCK_LEN;
     let disc_number = disc_info ! disc_data ! SB_disc_number;
     let block_number;
 
