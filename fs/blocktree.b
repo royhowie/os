@@ -10,7 +10,8 @@ export {
     block_tree_set,
     block_tree_rewind,
     block_tree_save,
-    block_tree_pare
+    block_tree_pare,
+    block_tree_go_back
 }
 
 let block_tree_init (FILE, file_header) be {
@@ -274,6 +275,9 @@ and block_tree_advance (FILE, writing) be {
     // then there is nothing left to read, so mark the file as EOF.
     if level_reached < levels /\ not writing then
         FILE ! FT_file_is_EOF := true;
+
+    // Increase the byte position in the file table
+    FILE ! FT_BT_byte_pos +:= 1;
 }
 
 and block_tree_get (FILE) be {
@@ -342,8 +346,81 @@ and block_tree_rewind (FILE) be {
         ) <= 0 then resultis -1;
     }
 
+    // Set the block tree byte position back to zero
+    FILE ! FT_BT_byte_pos := 0;
+
     resultis 1;
 }
+
+and block_tree_wind (FILE) be {
+    let block_tree = FILE ! FT_block_tree;
+    let levels = block_tree ! 0 ! FH_levels;
+    let offset = FH_first_word;
+
+    // If a 0-level block tree, the last piece of data will be located
+    // the distance of the file past the location of the first word.
+    test levels = 0 then {
+        block_tree ! 1 := ((block_tree ! 0 ! FH_length) - (4 * FH_first_word))
+            rem (4 * BLOCK_LEN);
+    // Otherwise, the entries correspond to block number pointers, so
+    // loop through until the last one is found.
+    } else {
+        until offset = BLOCK_LEN \/ block_tree ! 0 ! offset = 0 do
+            offset +:= 1;
+
+        // Offset will have gone past the last entry, so subtract one. 
+        offset := offset - 1;
+    }
+
+    // Record the 0th level offset in the block tree
+    block_tree ! 1 := offset;
+
+    // Similar to the process described in `block_tree_rewind`,
+    // except the last entry, not the first, at each level will be
+    // used.
+    //
+    // If unclear, read the comment above the for loop in rewind.
+    for i = 1 to levels - 1 do {
+        // Grab the previous entry's buffer and offset, which are
+        // needed to find the next block in the tree.
+        let prev_index = 2 * i - 2;
+        let prev_buff = block_tree ! prev_index;
+        let prev_offset = block_tree ! (prev_index + 1);
+        let cur_index = 0;
+        let cur_buff = block_tree ! (2 * i);
+
+        // Clear the block's buffer just in case.
+        clear_block(block_tree ! (2 * i));
+
+        // The block number of the next step in the block tree
+        // is record at prev_entry_buff ! prev_entry_offset,
+        // so copy it into the current buffer.
+        if read_block(
+            FILE ! FT_disc_number,
+            prev_buff ! prev_offset,
+            cur_buff
+        ) <= 0 then resultis -1;
+
+        // Find the last data entry in the current block and set
+        // it as the offset.
+        until cur_index = BLOCK_LEN \/ cur_buff ! cur_index = 0 do
+            cur_index +:= 1;
+
+        cur_index -:= 1;
+
+        block_tree ! (2 * i + 1) := cur_index;
+    }
+
+    // The offset in the last block is the length of the file in
+    // bytes modulo 512, or the number of bytes in a block.
+    block_tree ! (2 * levels + 1) := (block_tree ! 0 ! FH_length) rem 512;
+
+    // The block tree byte position is the very end of the file.
+    FILE ! FT_BT_byte_pos := (block_tree ! 0 ! FH_length) - 1;
+
+    resultis 1;
+}
+
 
 and block_tree_save (FILE, zero_last_block) be {
     let block_tree = FILE ! FT_block_tree;
@@ -463,4 +540,17 @@ and block_tree_pare (FILE) be {
     // would be immediately recursed upon anyway. Hence, it should
     // be skipped.
     go_higher(FILE, levels - 1, levels);
+}
+
+// Only intended to be used on directories, so, in theory, should
+// never fail.
+and block_tree_go_back (FILE, bytes) be {
+    let block_tree = FILE ! FT_block_tree;
+    let levels = block_tree ! 0 ! FH_levels;
+
+    block_tree ! (2 * levels + 1) -:= bytes;
+
+    FILE ! FT_BT_byte_pos -:= bytes;
+
+    resultis block_tree ! (2 * levels + 1);
 }
