@@ -177,7 +177,7 @@ let format_disc (disc_number, disc_name, force_write) be {
     }
 
     // Clear the buffer in case it has some leftover junk.
-    clear_buffer(buffer, BLOCK_LEN);
+    clear_block(buffer);
 
 
     // As explained in the constants at the top of the file,
@@ -266,9 +266,10 @@ let format_disc (disc_number, disc_name, force_write) be {
         let index = 0;
         clear_buffer(buffer, BLOCK_LEN);
 
-        while index < ONE_BLOCK /\ fb_block_num > fb_boundary do {
+        while index < BLOCK_LEN /\ fb_block_num > fb_boundary do {
             buffer ! index := fb_block_num;
             fb_block_num -:= 1;
+            index +:= 1;
         }
 
         if write_block(disc_number, FBL_block, buffer) <= 0 then {
@@ -278,7 +279,7 @@ let format_disc (disc_number, disc_name, force_write) be {
     }
 
     // Manually create the root directory.
-    clear_buffer(buffer, BLOCK_LEN); 
+    clear_block(buffer);
 
     buffer ! FH_levels          := 0;
     buffer ! FH_type            := FT_DIRECTORY;
