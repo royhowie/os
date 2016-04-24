@@ -4,10 +4,14 @@ export {
     min,
     max,
     copy_buffer,
+    copy_block,
     clear_buffer,
+    clear_block,
     check_disc,
     read_from_disc,
-    write_to_disc
+    read_block,
+    write_to_disc,
+    write_block
 }
 
 manifest { BLOCK_LEN = 128 }
