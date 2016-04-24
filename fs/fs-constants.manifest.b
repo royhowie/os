@@ -141,21 +141,23 @@ FTB_size_words              = 128
 //  2n+1    offset within leaf block
 FT_block_tree               = 0
 
+FT_BT_byte_pos              = 1
+
 // Is the file being read ('R') or written to ('W')?
-FT_direction                = 1
+FT_direction                = 2
 
 // Has the file header been modified?
-FT_modified                 = 2
+FT_modified                 = 3
 
 // Pointer to the disc object.
-FT_disc_info                = 3
+FT_disc_info                = 4
 
 // Number of disc on which file is located.
-FT_disc_number              = 4
+FT_disc_number              = 5
 
 // Boolean indicating whether file has reached its
 // end. 
-FT_file_is_EOF              = 5
+FT_file_is_EOF              = 6
 
 // FH = File Header
 // These constants serve as pointed to data within
@@ -195,3 +197,6 @@ FH_first_word               = 11
 FT_EOF                      = -1
 FT_FILE                     = 'F'
 FT_DIRECTORY                = 'D'
+FT_READ                     = 'r'
+FT_WRITE                    = 'w'
+FT_BOTH                     = 'b'
