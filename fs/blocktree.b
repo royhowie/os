@@ -1,5 +1,5 @@
 import "io"
-import "strings"
+import "free-blocks"
 import "fs-constants"
 import "helpers"
 
