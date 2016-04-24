@@ -166,6 +166,8 @@ let start () be {
             loop;
         }
 
+        if cmd %streq "exit" then finish;
+
         out("No command by that name!\n");
 
     }
