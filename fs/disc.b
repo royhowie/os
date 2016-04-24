@@ -2,6 +2,7 @@ import "io"
 import "strings"
 import "helpers"
 import "fs-constants"
+import "files"
 
 export { format_disc, mount, dismount }
 

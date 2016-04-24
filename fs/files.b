@@ -5,7 +5,7 @@ import "helpers"
 import "io"
 import "strings"
 
-export { open, close, read_byte, write_byte, create, delete, eof, ls }
+export { open, open_dir, close, read_byte, write_byte, create, delete, eof, ls }
 
 let read_byte (FILE) be {
     let data;
