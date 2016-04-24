@@ -300,7 +300,7 @@ and add_dir_entry (disc_info, fname, block_num, size, type, date) be {
     buff ! DIR_E_block      := block_num;
     buff ! DIR_E_file_size  := size;
     buff ! DIR_E_file_type  := type;
-    strcpy(fname, buff + DIR_E_name);
+    strcpy(buff + DIR_E_name, fname);
 
     for index = 0 to 4 * SIZEOF_DIR_ENT - 1 do
         write_byte(DIR, byte index of buff);    
