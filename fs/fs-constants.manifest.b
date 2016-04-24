@@ -95,7 +95,7 @@ ONE_BLOCK                   = 1
 /* --- mount ------------------------------- */
 /* ----------------------------------------- */
 max_number_of_discs         = 32
-DISCS                       = vec max_number_of_discs
+DISCS                       = vec(max_number_of_discs)
 
 // Boolean on whether disc has been altered.
 // If true, disc will be written back on dismount.
@@ -120,7 +120,7 @@ BLOCK_LEN                   = 128
 /* --- files ------------------------------- */
 /* ----------------------------------------- */
 FILE_TABLE_SIZE             = 32
-FILE_TABLE                  = vec FILE_TABLE_SIZE
+FILE_TABLE                  = vec(FILE_TABLE_SIZE)
 
 FT_ENTRY_SIZE               = 6
 FTB_size                    = 512
