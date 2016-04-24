@@ -522,7 +522,7 @@ let create_FT_entry (file_buffer, disc_number, direction) be {
     // And, naturally, the file has not yet been modified.
     FILE ! FT_modified := false;
 
-    if init_block_tree(FILE, file_buffer, disc_number) = -1 then {
+    if block_tree_init(FILE, file_buffer) = -1 then {
         // Ideally, should clean up block tree if initialization fails.
         out("Oh no! Unable to initialize block tree correctly!\n");
         resultis nil;
