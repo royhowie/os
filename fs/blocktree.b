@@ -9,6 +9,7 @@ export {
     block_tree_get,
     block_tree_set,
     block_tree_rewind,
+    block_tree_wind,
     block_tree_save,
     block_tree_pare,
     block_tree_go_back
@@ -102,7 +103,7 @@ and block_tree_advance (FILE, writing) be {
                 // be run on level 0.
                 prev_buff := block_tree ! (2 * level - 2);
                 prev_offset := block_tree ! (2 * level - 1);
-                block_num := prev_level ! prev_offset;
+                block_num := prev_buff ! prev_offset;
 
                 write_block(FILE ! FT_disc_number, block_num, buff);
             }
@@ -128,7 +129,7 @@ and block_tree_advance (FILE, writing) be {
 
         // Clear the next level's buffer (important to do now
         // since the block tree depends on 0s).
-        clear_block(block_tree ! (2 * level + 2);
+        clear_block(block_tree ! (2 * level + 2));
 
         // Find the next block from the disc to be read into
         // the block tree.
@@ -163,7 +164,7 @@ and block_tree_advance (FILE, writing) be {
 
                 // Don't want to read a blank block that we just wrote to
                 // disc back, so recurse from here instead of below.
-                resultis recurse_down(FILE, level + 1, max_levels, writing);
+                resultis recurse_down(FILE, level + 1, max_level, writing);
 
             // Nothing left, so return the current level, to be used below
             // to recognize the file has hit EOF.
@@ -179,7 +180,7 @@ and block_tree_advance (FILE, writing) be {
             block_tree ! (2 * level + 2)
         );
 
-        resultis recurse_down(FILE, level + 1, max_levels, writing);
+        resultis recurse_down(FILE, level + 1, max_level, writing);
     }
 
     level_reached := recurse_up(FILE, levels, levels, writing);
@@ -207,11 +208,11 @@ and block_tree_advance (FILE, writing) be {
             copy_buffer(block_tree, new_block_tree + 2, levels * 2);
 
             // Move the header block back to position 0.
-            new_block_tree ! 0 = new_block_tree ! 2;
+            new_block_tree ! 0 := new_block_tree ! 2;
 
             // Set its offset to the first word available in the
             // header block.
-            new_block_tree ! 1 = FH_first_word;
+            new_block_tree ! 1 := FH_first_word;
 
             // Next, move the block pointers which are located in the
             // header block to their own block on disc.
@@ -232,7 +233,7 @@ and block_tree_advance (FILE, writing) be {
             // If the tree has data in level 1, then the offset for the next
             // level needs to be recorded in bytes.
             test levels = 1 then
-                new_block_tree ! 4 := 4 * (BLOCK_LEN - FH_first_word + 1) + 1;
+                new_block_tree ! 4 := 4 * (BLOCK_LEN - FH_first_word + 1) + 1
             // Otherwise, just record the offset based on words.
             else
                 new_block_tree ! 4 := BLOCK_LEN - FH_first_word + 1;
@@ -306,7 +307,7 @@ and block_tree_rewind (FILE) be {
     // with a 0-level block tree, then set the offset in terms
     // of bytes; otherwise, set it in terms of words.
     test levels = 0 then
-        block_tree ! 1 := 4 * FH_first_word;
+        block_tree ! 1 := 4 * FH_first_word
     else
         block_tree ! 1 := FH_first_word;
 
@@ -463,9 +464,6 @@ and block_tree_pare (FILE) be {
     let block_tree = FILE ! FT_block_tree;
     let levels = block_tree ! 0 ! FH_levels;
 
-    // Don't bother with 0-level block trees.
-    if levels = 0 then return;
-
     let go_higher (FILE, level, max_level) be {
         let block_tree = FILE ! FT_block_tree;
         let cur_buff = block_tree ! (2 * level);
@@ -491,13 +489,13 @@ and block_tree_pare (FILE) be {
         // recursing.
         until cur_offset = BLOCK_LEN \/ cur_buff ! cur_offset = 0 do {
             // Recurse on the found block number.
-            go_deeper(FILE, cur_buff ! index, level, max_level);
+            go_deeper(FILE, cur_buff ! cur_offset, level, max_level);
 
             // Remember to free the found block number.
-            release_block(FILE ! FT_disc_info, cur_buff ! index);
+            release_block(FILE ! FT_disc_info, cur_buff ! cur_offset);
 
             // Set the entry to 0 to maintain the state of the block tree.
-            cur_buff ! index := 0;
+            cur_buff ! cur_offset := 0;
 
             cur_offset +:= 1;
         }
@@ -534,6 +532,9 @@ and block_tree_pare (FILE) be {
         }
     }
 
+
+    // Don't bother with 0-level block trees.
+    if levels = 0 then return;
 
     // Begin the recursive process on the second to last block
     // in the block tree. The last block is a leaf block, so it

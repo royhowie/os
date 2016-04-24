@@ -37,10 +37,10 @@ and eof (FILE) be {
         \/ (FILE ! FT_BT_byte_pos) = (FILE ! FT_block_tree ! 0 ! FH_length);
 }
 
-and get_next_dir_entry (DIR, buff) {
+and get_next_dir_entry (DIR, buff) be {
     let index = 0;
 
-    clear_buffer(buffer, SIZEOF_DIR_ENT);
+    clear_buffer(buff, SIZEOF_DIR_ENT);
 
     until index = 4 * SIZEOF_DIR_ENT \/ eof(DIR) do {
         byte index of buff := read_byte(DIR);
@@ -147,19 +147,19 @@ and delete (disc_info, file_name) be {
 
 and file_already_open (block_number, disc_number) be {
     for index = 0 to FILE_TABLE_SIZE - 1 do {
-        let file_entry = FILE_TABLE ! index;
+        let FILE = FILE_TABLE ! index;
         let file_header;
 
         // If the entry is null, continue searching.
-        if file_entry = nil then loop;
+        if FILE = nil then loop;
 
         // Otherwise, grab the file header from the file
         // entry's block tree.
-        file_header := file_entry ! FT_block_tree ! 0;
+        file_header := FILE ! FT_block_tree ! 0;
 
         // If the disc numbers and file header block numbers match, then return the entry
         if (file_header ! FH_current_block) = block_number /\ (file_header ! FH_current_block) = disc_number then
-            resultis file; 
+            resultis FILE; 
     }
 
     // Otherwise, nothing was found, so return nil
@@ -192,13 +192,13 @@ and create (disc_info, file_name, type) be {
     buffer ! FH_type            := type;
     buffer ! FH_date_created    := seconds();
     buffer ! FH_date_accessed   := buffer ! FH_date_created;
-    buffer ! length             := 0;
+    buffer ! FH_length          := 0;
 
     // disc_info ! disc_current_dir is FILE*,
     // so ! current_block is the block number of
     // the file header.
-    parent_block_number         := disc_info ! disc_current_dir ! current_block;
-    buffer ! parent_dir         := parent_block_number;
+    parent_block_number         := disc_info ! disc_current_dir ! FT_block_tree ! 0 ! FH_current_block;
+    buffer ! FH_parent_dir      := parent_block_number;
 
     // Copy the file name into the file header.
     strcpy(buffer + FH_name, file_name);
@@ -211,7 +211,7 @@ and create (disc_info, file_name, type) be {
     }
 
     // Store the header block in the file header.
-    buffer ! current_block := free_block;
+    buffer ! FH_current_block := free_block;
 
     // Write the file header to disc.
     if write_block(disc_number, free_block, buffer) <= 0 then {
@@ -243,12 +243,13 @@ and open_dir (disc_info, block_number, direction) be {
         resultis -1;
     }
 
-    resultis create_FT_entry(buffer, disc_number, direction); 
+    resultis create_FT_entry(buffer, disc_info, direction); 
 }
 
-let create_FT_entry (file_buffer, disc_number, direction) be {
+and create_FT_entry (file_buffer, disc_info, direction) be {
     let index = 0, FILE;
-    let file_open := file_already_open(file_buffer + FH_name, disc_number);
+    let file_open = file_already_open(file_buffer + FH_name, disc_number);
+    let disc_number = disc_info ! disc_data ! SB_disc_number;
 
     // If the file is already open, then just return its entry.
     unless file_open = nil do resultis file_open;
@@ -266,13 +267,13 @@ let create_FT_entry (file_buffer, disc_number, direction) be {
 
     // Create a file entry and store it in the file table.
     FILE := newvec(FT_ENTRY_SIZE);
-    FILE_TABLE ! index := file_entry;
+    FILE_TABLE ! index := FILE;
 
     // Record the direction (r or w) of the file being opened.
     FILE ! FT_direction := direction;
 
     // Record a pointer to the disc object.
-    FILE ! FT_disc := disc_info;
+    FILE ! FT_disc_info := disc_info;
 
     // Record the disc number.
     FILE ! FT_disc_number := disc_number;
@@ -348,10 +349,10 @@ and open (disc_info, file_name, direction) be {
         resultis nil;
     }
 
-    resultis create_FT_entry(buffer, disc_number, direction);
+    resultis create_FT_entry(buffer, disc_info, direction);
 }
 
-let close (FILE) be {
+and close (FILE) be {
     let distance = @FILE - FILE_TABLE;
     let levels, block_tree;
 
