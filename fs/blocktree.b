@@ -10,6 +10,7 @@ export {
     block_tree_set,
     block_tree_rewind,
     block_tree_save,
+    block_tree_pare
 }
 
 let block_tree_init (FILE, file_header) be {
@@ -381,3 +382,85 @@ and block_tree_save (FILE, zero_last_block) be {
     }
 }
 
+and block_tree_pare (FILE) be {
+    let block_tree = FILE ! FT_block_tree;
+    let levels = block_tree ! 0 ! FH_levels;
+
+    // Don't bother with 0-level block trees.
+    if levels = 0 then return;
+
+    let go_higher (FILE, level, max_level) be {
+        let block_tree = FILE ! FT_block_tree;
+        let cur_buff = block_tree ! (2 * level);
+
+        // Want to start at one past the current index, as the
+        // current index points to a block still in the tree.
+        let cur_offset = (block_tree ! (2 * level + 1)) + 1;
+
+        // A block tree only has levels numbered 0, 1, ...,
+        // so return if level is less than 0.
+        if level < 0 then return;
+
+        // Another guard clause. If called on the last level,
+        // just recurse immediately, as leaf nodes don't have
+        // block number pointers.
+        if level >= max_level then {
+            go_higher(FILE, max_level - 1, max_level);
+            return;
+        }
+
+        // Loop through the block, recursing on each block number.
+        // If the entry at cur_buff ! cur_offset is 0, then can stop
+        // recursing.
+        until cur_offset = BLOCK_LEN \/ cur_buff ! cur_offset = 0 do {
+            // Recurse on the found block number.
+            go_deeper(FILE, cur_buff ! index, level, max_level);
+
+            // Remember to free the found block number.
+            release_block(FILE ! FT_disc_info, cur_buff ! index);
+
+            // Set the entry to 0 to maintain the state of the block tree.
+            cur_buff ! index := 0;
+
+            cur_offset +:= 1;
+        }
+
+        // Move up a level.
+        go_higher(FILE, level - 1, max_level);
+    }
+
+    and go_deeper (FILE, block_number, level, max_level) be {
+        let buff = vec BLOCK_LEN;
+        let offset = 0;
+        
+        // If at a leaf node, cannot go any deeper, so return.
+        if level >= max_level then return;
+
+        // Read the block at `block_number` into memory.
+        read_block(FILE ! FT_disc_number, block_number, buff);
+
+        // Loop through the block, recursing on each block number
+        // found, unless the block number points to a leaf node.
+        until offset = BLOCK_LEN \/ buff ! offset = 0 do {
+            let free_block = buff ! offset;
+
+            // While seemingly redundant because of the guard clause
+            // above, this is a useful check since it prevents
+            // the buffer from constantly being put on and removed
+            // from the stack. Plus, go_higher calls go_deeper, so
+            // cannot be certain it will obey this condition.
+            unless level + 1 = max_level do
+                go_deeper(FILE, free_block, 0, level + 1, max_level);
+
+            release_block(FILE ! FT_disc_info, free_block);
+            offset +:= 1;
+        }
+    }
+
+
+    // Begin the recursive process on the second to last block
+    // in the block tree. The last block is a leaf block, so it
+    // would be immediately recursed upon anyway. Hence, it should
+    // be skipped.
+    go_higher(FILE, levels - 1, levels);
+}

@@ -148,7 +148,7 @@ FT_direction                = 1
 FT_modified                 = 2
 
 // Pointer to the disc object.
-FT_disc                     = 3
+FT_disc_info                = 3
 
 // Number of disc on which file is located.
 FT_disc_number              = 4
