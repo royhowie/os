@@ -87,7 +87,7 @@ DIR_E_block                 = 1
 DIR_E_file_size             = 2
 DIR_E_file_type             = 3
 DIR_E_name                  = 4
-DIR_E_name_len              = 32
+DIR_E_name_len              = 16
 
 ONE_BLOCK                   = 1
 
@@ -122,7 +122,7 @@ BLOCK_LEN                   = 128
 FILE_TABLE_SIZE             = 32
 FILE_TABLE                  = vec(FILE_TABLE_SIZE)
 
-FT_ENTRY_SIZE               = 6
+FT_ENTRY_SIZE               = 7
 FTB_size                    = 512
 FTB_size_words              = 128
 
@@ -190,7 +190,7 @@ FH_current_block            = 6
 
 // Name of file or directory. Can be up to 4 words long.
 FH_name                     = 7
-FH_name_len                 = 32
+FH_name_len                 = 16
 
 FH_first_word               = 11
 

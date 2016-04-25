@@ -74,7 +74,6 @@ let dismount (disc_info) be {
 }
 
 let mount (disc_number, disc_name) be {
-    // `buffer` will be used to store data read from disc.
     let buffer = vec BLOCK_LEN, length, disc_info;
 
     // Attempt to read the super block into `buffer`.
@@ -127,7 +126,7 @@ let mount (disc_number, disc_name) be {
     // Copy the FBL window into the correct buffer under disc_info.
     // Make sure to allocate a vector first.
     disc_info ! disc_FBL_window := newvec(BLOCK_LEN);
-    copy_buffer(buffer, disc_info ! disc_FBL_window, BLOCK_LEN);
+    copy_block(buffer, disc_info ! disc_FBL_window);
 
     // Set the current directory equal to the root directory.
     disc_info ! disc_current_dir := open_dir(disc_info,
@@ -138,10 +137,11 @@ let mount (disc_number, disc_name) be {
 }
 
 let format_disc (disc_number, disc_name, force_write) be {
-    let buffer = vec BLOCK_LEN, length = strlen(disc_name);
-    let free_blocks = devctl(DC_DISC_CHECK, disc_number);
-    let fb_block_num = free_blocks - 1, fb_boundary;
-    let root_dir_bn;
+    let buffer = vec BLOCK_LEN;
+    let length = strlen(disc_name);
+    let free_blocks = check_disc(disc_number);
+    let fb_block_num = free_blocks - 1;
+    let fb_boundary, root_dir_bn;
 
     // If not passed the correct number of arguments, return;
     unless 1 < numbargs() < 4 do {
@@ -185,14 +185,16 @@ let format_disc (disc_number, disc_name, force_write) be {
     // The FBL will follow. To determine the size of the FBL,
     // recall that it is roughly
     //      free_blocks / BLOCK_LEN
-    // However, the FBL itself takes up space, so we 
-
-    // The FBL will be 1 + (free_blocks / 128) blocks long.
-    buffer ! SB_FBL_size            := 1 + (free_blocks / BLOCK_LEN);
+    // However, the FBL itself takes up space, and we know the
+    // super block is unavilable, so the FBL is
+    //   (free_blocks - 1 - (free_blocks - 1)/BLOCK_LEN) / BLOCK_LEN  
+    // which accounts for the length of the free block list.
+    buffer ! SB_FBL_size := 1 + (free_blocks - 1 - (free_blocks - 1) / BLOCK_LEN) / BLOCK_LEN;
+    // buffer ! SB_FBL_size            := 1 + (free_blocks / BLOCK_LEN);
 
     // But if the number of free blocks is evenly divisible by 128,
     // then the above calculation will have yielded an extra block.
-    if free_blocks rem BLOCK_LEN = 0 then
+    if (free_blocks - 1 - (free_blocks - 1)/BLOCK_LEN) rem BLOCK_LEN = 0 then
         buffer ! SB_FBL_size -:= 1;
 
     // The FBL will be located from blocks 1, 2, …, SB_FBL_size,
@@ -286,7 +288,8 @@ let format_disc (disc_number, disc_name, force_write) be {
     buffer ! FH_date_created    := seconds();
     buffer ! FH_date_accessed   := buffer ! FH_date_created;
     buffer ! FH_length          := 0;
-    buffer ! FH_parent_dir      := 0;
+    buffer ! FH_parent_dir      := root_dir_bn;
+    buffer ! FH_current_block   := root_dir_bn;
     strcpy(buffer + FH_name, "root");
 
     if write_block(disc_number, root_dir_bn, buffer) <= 0 then {

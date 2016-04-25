@@ -277,6 +277,10 @@ and block_tree_advance (FILE, writing) be {
     if level_reached < levels /\ not writing then
         FILE ! FT_file_is_EOF := true;
 
+    // Update file length
+    if writing then
+        FILE ! FT_block_tree ! 0 ! FH_length := FILE ! FT_BT_byte_pos;
+
     // Increase the byte position in the file table
     FILE ! FT_BT_byte_pos +:= 1;
 }
@@ -307,7 +311,7 @@ and block_tree_rewind (FILE) be {
     // with a 0-level block tree, then set the offset in terms
     // of bytes; otherwise, set it in terms of words.
     test levels = 0 then
-        block_tree ! 1 := 4 * FH_first_word
+        block_tree ! 1 := 4 * FH_first_word - 4
     else
         block_tree ! 1 := FH_first_word;
 
@@ -350,6 +354,9 @@ and block_tree_rewind (FILE) be {
     // Set the block tree byte position back to zero
     FILE ! FT_BT_byte_pos := 0;
 
+    // Make sure the file isn't marked as EOF
+    FILE ! FT_file_is_EOF := false;
+
     resultis 1;
 }
 
@@ -361,8 +368,10 @@ and block_tree_wind (FILE) be {
     // If a 0-level block tree, the last piece of data will be located
     // the distance of the file past the location of the first word.
     test levels = 0 then {
-        block_tree ! 1 := ((block_tree ! 0 ! FH_length) - (4 * FH_first_word))
-            rem (4 * BLOCK_LEN);
+        //block_tree ! 1 := ((block_tree ! 0 ! FH_length) - (4 * FH_first_word))
+        //    rem (4 * BLOCK_LEN);
+        block_tree ! 1 := -4 + 4 * FH_first_word + (block_tree ! 0 ! FH_length);
+        resultis 1;
     // Otherwise, the entries correspond to block number pointers, so
     // loop through until the last one is found.
     } else {
