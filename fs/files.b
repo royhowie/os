@@ -27,8 +27,9 @@ and write_byte (FILE, data) be {
         resultis FT_EOF;
     }
 
-    block_tree_set(data);
-    block_tree_advance(FILE);
+    block_tree_set(FILE, data);
+    block_tree_advance(FILE, true);
+
     resultis 1;
 }
 
@@ -47,31 +48,36 @@ and get_next_dir_entry (DIR, buff) be {
         index +:= 1;
     }
 
-    resultis index = 4 * SIZEOF_DIR_ENT -> 1, -1;
+    resultis buff ! DIR_E_file_type <> 0 /\ index = 4 * SIZEOF_DIR_ENT -> 1, -1;
 }
 
 and ls (disc_info) be {
     let buff = vec SIZEOF_DIR_ENT;
+    let date_buff = vec 7;
     let DIR = disc_info ! disc_current_dir;
     let file_number = 1;
 
     block_tree_rewind(DIR);
 
-    outs("no. type name size date\n");
+    out("%s %s %32s %s\t  %s\n", " # ", "type", "name", " size", "date");
 
     until eof(DIR) do {
-        if get_next_dir_entry(DIR, buff) = -1 then {
-            out("hit last entry!\n");
-            return;
-        }
+        if get_next_dir_entry(DIR, buff) = -1 then return;
+       
+        datetime(buff ! DIR_E_date, date_buff);
         
         out(
-            "%2d: (%c) %32s %4d\t%d\n",
+            "%2d: (%c)  %32s %4db\t  %4d %2d %2d %2d:%2d:%2d\n",
             file_number,
             buff ! DIR_E_file_type,
             buff + DIR_E_name,
             buff ! DIR_E_file_size,
-            buff ! DIR_E_date
+            date_buff ! 0,  // year
+            date_buff ! 1,  // month
+            date_buff ! 2,  // day
+            date_buff ! 4,  // hour
+            date_buff ! 5,  // minute
+            date_buff ! 6   // second
         );
 
         file_number +:= 1;

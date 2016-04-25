@@ -189,7 +189,7 @@ and block_tree_advance (FILE, writing) be {
     // i.e. if levels_in_tree = 1 and offset = 512
     //      OR levels_in_tree > 1 and offset = 128
     if level_reached = 0 /\ (
-        (block_tree ! 1 = 4 * BLOCK_LEN) \/
+        (block_tree ! 1 = BLOCK_LEN /\ levels > 0) \/
         (block_tree ! 1 = BLOCK_LEN /\ levels = 0)
     ) then {
         // If writing, need to expand the block tree
@@ -277,9 +277,9 @@ and block_tree_advance (FILE, writing) be {
     if level_reached < levels /\ not writing then
         FILE ! FT_file_is_EOF := true;
 
-    // Update file length
-    if writing then
-        FILE ! FT_block_tree ! 0 ! FH_length := FILE ! FT_BT_byte_pos;
+    // Update file length only if appending
+    if writing /\ FILE ! FT_block_tree ! 0 ! FH_length = FILE ! FT_BT_byte_pos then
+        FILE ! FT_block_tree ! 0 ! FH_length +:= 1;
 
     // Increase the byte position in the file table
     FILE ! FT_BT_byte_pos +:= 1;
@@ -367,23 +367,20 @@ and block_tree_wind (FILE) be {
 
     // If a 0-level block tree, the last piece of data will be located
     // the distance of the file past the location of the first word.
-    test levels = 0 then {
-        //block_tree ! 1 := ((block_tree ! 0 ! FH_length) - (4 * FH_first_word))
-        //    rem (4 * BLOCK_LEN);
-        block_tree ! 1 := -4 + 4 * FH_first_word + (block_tree ! 0 ! FH_length);
+    if levels = 0 then {
+        block_tree ! 1 := 4 * FH_first_word + (block_tree ! 0 ! FH_length);
+        // Return early, as the rest of the function will not apply.
         resultis 1;
-    // Otherwise, the entries correspond to block number pointers, so
-    // loop through until the last one is found.
-    } else {
-        until offset = BLOCK_LEN \/ block_tree ! 0 ! offset = 0 do
-            offset +:= 1;
-
-        // Offset will have gone past the last entry, so subtract one. 
-        offset := offset - 1;
     }
 
-    // Record the 0th level offset in the block tree
-    block_tree ! 1 := offset;
+    // Otherwise, the entries correspond to block number pointers, so
+    // loop through until the last one is found.
+    until offset = BLOCK_LEN \/ block_tree ! 0 ! offset = 0 do
+        offset +:= 1;
+
+    // Offset will have gone past the last entry, so subtract one
+    // and record it in the 0th level offset of the block tree.
+    block_tree ! 1 := offset - 1;
 
     // Similar to the process described in `block_tree_rewind`,
     // except the last entry, not the first, at each level will be
@@ -422,8 +419,8 @@ and block_tree_wind (FILE) be {
     }
 
     // The offset in the last block is the length of the file in
-    // bytes modulo 512, or the number of bytes in a block.
-    block_tree ! (2 * levels + 1) := (block_tree ! 0 ! FH_length) rem 512;
+    // bytes modulo 512, or the number of bytes in a block, plus 1.
+    block_tree ! (2 * levels + 1) := 1 + ((block_tree ! 0 ! FH_length) rem 512);
 
     // The block tree byte position is the very end of the file.
     FILE ! FT_BT_byte_pos := (block_tree ! 0 ! FH_length) - 1;

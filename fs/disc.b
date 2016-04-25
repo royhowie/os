@@ -189,8 +189,8 @@ let format_disc (disc_number, disc_name, force_write) be {
     // super block is unavilable, so the FBL is
     //   (free_blocks - 1 - (free_blocks - 1)/BLOCK_LEN) / BLOCK_LEN  
     // which accounts for the length of the free block list.
-    buffer ! SB_FBL_size := 1 + (free_blocks - 1 - (free_blocks - 1) / BLOCK_LEN) / BLOCK_LEN;
-    // buffer ! SB_FBL_size            := 1 + (free_blocks / BLOCK_LEN);
+    buffer ! SB_FBL_size :=
+        1 + (free_blocks - 1 - (free_blocks - 1) / BLOCK_LEN) / BLOCK_LEN;
 
     // But if the number of free blocks is evenly divisible by 128,
     // then the above calculation will have yielded an extra block.
@@ -205,17 +205,14 @@ let format_disc (disc_number, disc_name, force_write) be {
     // will be the beginning of the FBL.
     buffer ! SB_FBL_index           := buffer ! SB_FBL_size;
 
-    // The offset within the last block will be equal to
-    //      free_blocks mod BLOCK_LEN
-    // For example, if there are 6000 free blocks, then
-    // 6000 / 128 = 46.875 blocks will be needed. This
-    // then rounds to 47 blocks. But the last block will
-    // not be filled completely.
-    // Note that 46 * 128 = 5888 and that 6000 - 5888 = 112
-    // Meaning the last block will have 112 free block entries.
-    // Thus, the offset within the last block will be
-    //      (free_blocks - 1) mod 128
-    buffer ! SB_FBL_index_offset    := (free_blocks - 1) rem BLOCK_LEN;
+    // The number of free blocks on disc is equal to the total
+    // number of blocks less 1 for the super block and less the
+    // size of the free block list and less 1 for the root dir.
+    // The offset within the free block list will thus be the
+    // number of free blocks mod 128. Subtract 1 for 0-based
+    // indexing.
+    buffer ! SB_FBL_index offset :=
+        (free_blocks - (buffer ! SB_FBL_size) - 2) rem BLOCK_LEN;
 
     // The FBL always ends at the block at index 1.
     buffer ! SB_FBL_end             := 1;
