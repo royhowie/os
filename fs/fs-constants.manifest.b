@@ -122,7 +122,7 @@ BLOCK_LEN                   = 128
 FILE_TABLE_SIZE             = 32
 FILE_TABLE                  = vec(FILE_TABLE_SIZE)
 
-FT_ENTRY_SIZE               = 7
+FT_ENTRY_SIZE               = 6
 FTB_size                    = 512
 FTB_size_words              = 128
 
@@ -154,10 +154,6 @@ FT_disc_info                = 4
 
 // Number of disc on which file is located.
 FT_disc_number              = 5
-
-// Boolean indicating whether file has reached its
-// end. 
-FT_file_is_EOF              = 6
 
 // FH = File Header
 // These constants serve as pointed to data within

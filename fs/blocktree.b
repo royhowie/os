@@ -298,19 +298,11 @@ and block_tree_advance (FILE, writing) be {
             block_tree := new_block_tree;
 
         // Otherwise, there is nothing left to read in the file,
-        // so mark is as fully read.
-        } else {
-            FILE ! FT_file_is_EOF := true;
-            return;
-        }
+        // so return.
+        } else return;
     }
 
     level_reached := recurse_down(FILE, level_reached, levels, writing);
-
-    // If not writing and the file couldn't reach the bottom of the tree,
-    // then there is nothing left to read, so mark the file as EOF.
-    if level_reached < levels /\ not writing then
-        FILE ! FT_file_is_EOF := true;
 
     // Update file length only if appending.
     if writing /\ FILE ! FT_block_tree ! 0 ! FH_length = FILE ! FT_BT_byte_pos then
@@ -388,8 +380,6 @@ and block_tree_rewind (FILE) be {
 
     // Set the block tree byte position back to zero
     FILE ! FT_BT_byte_pos := 0;
-
-    FILE ! FT_file_is_EOF := false;
 
     resultis 1;
 }
