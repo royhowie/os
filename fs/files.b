@@ -58,7 +58,7 @@ and ls (disc_info) be {
 
     block_tree_rewind(DIR);
 
-    out("%s %s %32s %s %s\t  %s\n", " # ", "type", "name", " size", "block", "date");
+    out("%s %s %16s %s %s\t  %s\n", " # ", "type", "name", " size", "block", "date");
 
     until eof(DIR) do {
         if get_next_dir_entry(DIR, buff) = -1 then return;
@@ -66,7 +66,7 @@ and ls (disc_info) be {
         datetime(buff ! DIR_E_date, date_buff);
 
         out(
-            "%2d: (%c)  %32s %4db %4d\t  %4d %2d %2d %2d:%2d:%2d\n",
+            "%2d: (%c)  %16s %4db %4d\t  %4d %2d %2d %2d:%2d:%2d\n",
             file_number,
             buff ! DIR_E_file_type,
             buff + DIR_E_name,
