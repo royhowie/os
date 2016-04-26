@@ -1,6 +1,18 @@
 import "io"
 
-export { strcmp, streq, strcpy, strncpy, strdup, strcat, strncat, ins, fixed_to_str, str_to_fixed }
+export {
+    strcmp,
+    streq,
+    str_begins_with,
+    strcpy,
+    strncpy,
+    strdup,
+    strcat,
+    strncat,
+    ins,
+    fixed_to_str,
+    str_to_fixed
+}
 
 let strcmp (str1, str2) be {
     let index = 0;
@@ -18,8 +30,23 @@ let strcmp (str1, str2) be {
     else resultis 1;            // str2 is a substring of str1
 }
 
-let streq (str1, str2) be {
-    resultis strcmp(str1, str2) = 0;
+let streq (this, that) = strcmp(this, that) = 0;
+
+let str_begins_with (this, that) be {
+    let len1 = strlen(this);
+    let len2 = strlen(that);
+
+    // If this is shorter than that, then
+    // this cannot begin with that.
+    if len1 < len2 then resultis false;
+
+    // Otherwise, read through the string and compare.
+    for index = 0 to len2 - 1 do
+        unless byte index of this = byte index of that do
+            resultis false;
+
+    // Everything lined up, so return true.
+    resultis true;
 }
 
 /*
@@ -82,27 +109,28 @@ let strcat (dest, source) be {
     resultis dest;
 }
 
-let strncat(destination, source, n) be {
-  let len = strlen(destination);
-  let index = 0;
+let strncat (destination, source, n) be {
+    let len = strlen(destination);
+    let index = 0;
 
-  until index = n do
-  {
-    byte len of destination := byte index of source;
-    index +:= 1;
-    len +:= 1;
-  }
+    until index = n do {
+        byte len of destination := byte index of source;
+        index +:= 1;
+        len +:= 1;
+    }
 
-  if n = strlen(source) + 1 then byte len of destination := 0;
-  resultis destination;
+    if n = strlen(source) + 1 then
+        byte len of destination := 0;
+
+    resultis destination;
 }
 
 let inch_unbuff () be {
     assembly {
-        inch R1
-        jpos R1, PC+2
+        inch    R1
+        jpos    R1,     PC + 2
         pause
-        jump PC-4
+        jump    PC - 4
     }
 }
 
