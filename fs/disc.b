@@ -210,7 +210,7 @@ let format_disc (disc_number, disc_name, force_write) be {
     // The offset within the free block list will thus be the
     // number of free blocks mod 128. Subtract 1 for 0-based
     // indexing.
-    buffer ! SB_FBL_index offset :=
+    buffer ! SB_FBL_index_offset :=
         ((free_blocks - (buffer ! SB_FBL_size) - 2) rem BLOCK_LEN) - 1;
 
     // The FBL always ends at the block at index 1.
