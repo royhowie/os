@@ -20,7 +20,7 @@ let get_open_disc_slot () be {
 
             disc ! disc_has_changed := 0;
             disc ! disc_data := newvec(BLOCK_LEN);
-    		disc ! disc_FBL_window := newvec(BLOCK_LEN);
+            disc ! disc_FBL_window := newvec(BLOCK_LEN);
             DISCS ! i := disc;
 
             resultis DISCS + i;
@@ -179,7 +179,6 @@ let format_disc (disc_number, disc_name, force_write) be {
     // Clear the buffer in case it has some leftover junk.
     clear_block(buffer);
 
-
     // As explained in the constants at the top of the file,
     // the super block will be located at block 0 on disc.
     // The FBL will follow. To determine the size of the FBL,
@@ -212,7 +211,7 @@ let format_disc (disc_number, disc_name, force_write) be {
     // number of free blocks mod 128. Subtract 1 for 0-based
     // indexing.
     buffer ! SB_FBL_index offset :=
-        (free_blocks - (buffer ! SB_FBL_size) - 2) rem BLOCK_LEN;
+        ((free_blocks - (buffer ! SB_FBL_size) - 2) rem BLOCK_LEN) - 1;
 
     // The FBL always ends at the block at index 1.
     buffer ! SB_FBL_end             := 1;
@@ -263,7 +262,7 @@ let format_disc (disc_number, disc_name, force_write) be {
     fb_boundary := 1 + buffer ! SB_FBL_start;
     for FBL_block = (buffer ! SB_FBL_end) to (buffer ! SB_FBL_start) do {
         let index = 0;
-        clear_buffer(buffer, BLOCK_LEN);
+        clear_block(buffer);
 
         while index < BLOCK_LEN /\ fb_block_num > fb_boundary do {
             buffer ! index := fb_block_num;

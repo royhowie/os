@@ -34,8 +34,7 @@ and write_byte (FILE, data) be {
 }
 
 and eof (FILE) be {
-    resultis FILE ! FT_file_is_EOF
-        \/ (FILE ! FT_BT_byte_pos) = (FILE ! FT_block_tree ! 0 ! FH_length);
+    resultis FILE ! FT_BT_byte_pos = FILE ! FT_block_tree ! 0 ! FH_length;
 }
 
 and get_next_dir_entry (DIR, buff) be {
@@ -59,19 +58,20 @@ and ls (disc_info) be {
 
     block_tree_rewind(DIR);
 
-    out("%s %s %32s %s\t  %s\n", " # ", "type", "name", " size", "date");
+    out("%s %s %32s %s %s\t  %s\n", " # ", "type", "name", " size", "block", "date");
 
     until eof(DIR) do {
         if get_next_dir_entry(DIR, buff) = -1 then return;
-       
+
         datetime(buff ! DIR_E_date, date_buff);
-        
+
         out(
-            "%2d: (%c)  %32s %4db\t  %4d %2d %2d %2d:%2d:%2d\n",
+            "%2d: (%c)  %32s %4db %4d\t  %4d %2d %2d %2d:%2d:%2d\n",
             file_number,
             buff ! DIR_E_file_type,
             buff + DIR_E_name,
             buff ! DIR_E_file_size,
+            buff ! DIR_E_block,
             date_buff ! 0,  // year
             date_buff ! 1,  // month
             date_buff ! 2,  // day
@@ -231,12 +231,8 @@ and create (disc_info, file_name, type) be {
     // Directories should have ./ and ../ entries.
     // This should probably involve a change of directories function.
     if type = FT_DIRECTORY then {
-        open(disc_info, file_name, FT_BOTH);
-
         add_dir_entry(disc_info, "./", free_block, 0, FT_DIRECTORY, buffer ! FH_date_created);
         add_dir_entry(disc_info, "../", parent_block_number, 0, FT_DIRECTORY, seconds());
-
-        open(disc_info, "../", FT_BOTH);
     }
 
     resultis 1;
@@ -257,8 +253,8 @@ and open_dir (disc_info, block_number, direction) be {
 
 and create_FT_entry (file_buffer, disc_info, direction) be {
     let index = 0, FILE;
-    let file_open = file_already_open(file_buffer + FH_name, disc_number);
     let disc_number = disc_info ! disc_data ! SB_disc_number;
+    let file_open = file_already_open(file_buffer + FH_name, disc_number);
 
     // If the file is already open, then just return its entry.
     unless file_open = nil do resultis file_open;
@@ -312,7 +308,7 @@ and add_dir_entry (disc_info, fname, block_num, size, type, date) be {
     strcpy(buff + DIR_E_name, fname);
 
     for index = 0 to 4 * SIZEOF_DIR_ENT - 1 do
-        write_byte(DIR, byte index of buff);    
+        write_byte(DIR, byte index of buff);
 
     block_tree_save(DIR, true);
 
