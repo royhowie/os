@@ -1,2 +1,5 @@
 # ignore vim swap files
 *.swp
+
+# ignore the workspace
+workspace/*
