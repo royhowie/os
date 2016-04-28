@@ -76,12 +76,10 @@ let start () be {
 
             current_disc := mount(args ! 1, args ! 2);
 
-            out("%s disc %d with name '%s'.\n",
-                (current_disc < 0 ->
-                "Unable to mount", "Successfully mounted"),
-                args ! 1,
-                args ! 2
-            );
+            if current_disc < 0 then {
+                out("Unable to mount disc %d with name '%s'.\n", args ! 1, args ! 2);
+                current_disc := nil;
+            }
 
             freevec(ret);
         } else test cmd %str_begins_with "dismount" then {
