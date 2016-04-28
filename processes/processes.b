@@ -244,7 +244,10 @@ manifest {
     IDLE_PROCESS_STACK  = vec 32
 }
 
+let make_idle_process () be {
+    make_process(idle_process, IDLE_PROCESS_STACK + 32);
+}
+
 let init_processes () be {
-    let p_num = make_process(idle_process, IDLE_PROCESS_STACK + 32);
-    start_process(p_num);
+    start_process(0);
 }
