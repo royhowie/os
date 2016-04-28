@@ -11,7 +11,9 @@ static {
     command_touch       = "touch file_name",
     command_read        = "read file_name",
     command_write       = "write file_name",
-    command_delete      = "delete file_name"
+    command_delete      = "rm file_name",
+    command_mkdir       = "mkdir dir_name",
+    command_cd          = "cd dir_name"
 }
 
 
@@ -22,6 +24,8 @@ let start () be {
     let current_disc = nil, current_file = nil;
 
     init(heap, 10000);
+
+    outs("? for help\n");
 
     while true do {
         let cmd = vec 25;
@@ -36,6 +40,9 @@ let start () be {
             out("  %s\n", command_read);
             out("  %s\n", command_write);
             out("  %s\n", command_delete);
+            out("  %s\n", command_mkdir);
+            out("  %s\n", command_cd);
+            out("  ? or help to display this message\n");
         } else test cmd %str_begins_with "format" then {
             ret := parse(cmd, "sds", args);
 
@@ -112,6 +119,49 @@ let start () be {
             );
 
             freevec(ret);
+        } else test cmd %str_begins_with "mkdir" then {
+            if current_disc = nil then {
+                outs("Must mount a disc first");
+                loop;
+            }
+
+            ret := parse(cmd, "ss", args);
+
+            if ret = -1 then {
+                error_msg("mkdir", command_mkdir);
+                loop;
+            }
+
+            out("%s directory '%s'.\n",
+                (create(current_disc, args ! 1, FT_DIRECTORY) < 0 ->
+                    "Unable to create", "Created"),
+                args ! 1
+            );
+
+            freevec(ret);
+        } else test cmd %str_begins_with "cd" then {
+            if current_disc = nil then {
+                outs("Mount a disc first!\n");
+                loop;
+            }
+
+            ret := parse(cmd, "ss", args);
+
+            if ret = -1 then {
+                error_msg("cd", command_cd);
+                loop;
+            }
+
+            current_file := open(current_disc, args ! 1, FT_BOTH);
+
+            test current_file = nil then {
+                out("Could not find '%s' in current directory.\n", args ! 1);
+            } else if current_file ! FT_block_tree ! 0 ! FH_type <> FT_DIRECTORY then {
+                out("'%s' is not a directory.\n");
+                close(current_file);
+            }
+
+            freevec(ret);
         } else test cmd %str_begins_with "read" then {
             if current_disc = nil then {
                 outs("Mount a disc first!\n");
@@ -170,7 +220,7 @@ let start () be {
             }
 
             freevec(ret);
-        } else test cmd %str_begins_with "delete" then {
+        } else test cmd %str_begins_with "rm" then {
             if current_disc = nil then {
                 outs("Mount a disc first!\n");
                 loop;
@@ -179,7 +229,7 @@ let start () be {
             ret := parse(cmd, "ss", args);
 
             if ret = -1 then {
-                error_msg("delete", command_delete);
+                error_msg("rm", command_delete);
                 loop;
             }
 
