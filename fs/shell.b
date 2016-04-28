@@ -5,6 +5,8 @@ import "io"
 import "fs-constants"
 import "parser"
 
+export { run_shell }
+
 static {
     command_format      = "format disc_number disc_name",
     command_mount       = "mount disc_number disc_name",
@@ -18,18 +20,14 @@ static {
 }
 
 
-let start () be {
-    let heap = vec 10000;
-    let args = vec 4;
-    let ret;
+let run_shell () be {
     let current_disc = nil, current_file = nil;
-
-    init(heap, 10000);
 
     outs("? for help\n");
 
     while true do {
-        let cmd = vec 25;
+        let cmd = vec 25, args = vec 4, ret;
+
         outs("> ");
         ins(cmd, 99);
 
