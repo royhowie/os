@@ -76,21 +76,21 @@ let timer_handler (int_code, int_addr, intx, PC, FP, SP) be {
     while number_processes > 0 do {
         // Loop through every process. If the end if reached, return to zero.
         process_number := (process_number + 1) rem number_processes;
+
+        // Skip the idle process if there are others which can be run.
+        if process_number = 0 /\ number_processes > 1 then loop;
        
         // If back at the process which was originally being processed
         // until the interrupt, i.e., `current_process`, then `break`
         // (since we can just continue running the same process).
-        if process_number = current_process then
-            break;
+        if process_number = current_process then break;
 
         // If the entry is nil, keep searching.
-        if process_table ! process_number = nil then
-            loop;
+        if process_table ! process_number = nil then loop;
 
         // Otherwise, if we come across a process with its PCB_STATE
         // set to 'R' (read?), then it can be run next.
-        if process_table ! process_number ! PCB_STATE = 'R' then
-            break;
+        if process_table ! process_number ! PCB_STATE = 'R' then break;
     }
 
     // Set a timer on how long the next process will be allowed to run.
