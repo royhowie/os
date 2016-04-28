@@ -5,7 +5,19 @@ import "helpers"
 import "io"
 import "strings"
 
-export { open, open_by_block_num, close, read_byte, write_byte, create, delete, eof, ls, create_dir_entry }
+export {
+    open,
+    open_by_block_num,
+    close,
+    read_byte,
+    write_byte,
+    create,
+    delete,
+    eof,
+    ls,
+    create_dir_entry,
+    copy_from_tape
+}
 
 let read_byte (FILE) be {
     let data;
@@ -481,5 +493,39 @@ and close (FILE) be {
 
     // And return 1 to indicate success.
     resultis 1;
+}
+
+and copy_from_tape (disc_info, tape_num, file_name) be {
+    let buff = vec BLOCK_LEN;
+    let FILE;
+    let bytes_read = 512;
+
+    if tape_load(tape_num, file_name, 'R') < 0 then {
+        out("Unable to read file from tape.\n");
+        resultis -1;
+    }
+
+    if create(disc_info, file_name, FT_FILE) = -1 then {
+        out("Unable to create file '%s' in current directory.\n", file_name);
+        resultis -1;
+    }
+
+    FILE := open(disc_info, file_name, FT_WRITE);
+
+    if FILE = nil then {
+        out("Unable to open file '%s' for writing.\n", file_name);
+        resultis -1;
+    }
+
+    until bytes_read < 512 do {
+        bytes_read := tape_read(tape_num, buff);
+
+        for i = 0 to bytes_read - 1 do
+            write_byte(FILE, byte i of buff);
+    }
+
+    close(FILE);
+
+    resultis tape_unload(tape_num) > 0 -> 1, -1;
 }
 

@@ -11,7 +11,10 @@ export {
     read_from_disc,
     read_block,
     write_to_disc,
-    write_block
+    write_block,
+    tape_load,
+    tape_unload,
+    tape_read
 }
 
 manifest { BLOCK_LEN = 128 }
@@ -36,3 +39,7 @@ let write_to_disc (disc_number, block, num_blocks, buff) be {
     resultis devctl(DC_DISC_WRITE, disc_number, block, num_blocks, buff);
 }
 let write_block (disc_number, block, buff) = write_to_disc(disc_number, block, 1, buff);
+
+let tape_load (tape_num, file_name, mode) = devctl(DC_TAPE_LOAD, tape_num, file_name, mode);
+let tape_unload (tape_num) = devctl(DC_TAPE_UNLOAD, tape_num);
+let tape_read (tape_num, buff) = devctl(DC_TAPE_READ, tape_num, buff);

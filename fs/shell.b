@@ -11,15 +11,16 @@ static {
     command_touch       = "touch file_name",
     command_read        = "read file_name",
     command_write       = "write file_name",
-    command_delete      = "rm file_name",
+    command_rm          = "rm file_name",
     command_mkdir       = "mkdir dir_name",
-    command_cd          = "cd dir_name"
+    command_cd          = "cd dir_name",
+    command_tape        = "tape tape_num file_name"
 }
 
 
 let start () be {
     let heap = vec 10000;
-    let args = vec 10;
+    let args = vec 4;
     let ret;
     let current_disc = nil, current_file = nil;
 
@@ -39,9 +40,10 @@ let start () be {
             out("  %30s - create a file\n", command_touch);
             out("  %30s - read the contents of a file\n", command_read);
             out("  %30s - write to a file\n", command_write);
-            out("  %30s - delete a file or directory\n", command_delete);
+            out("  %30s - delete a file or directory\n", command_rm);
             out("  %30s - create a directory\n", command_mkdir);
             out("  %30s - change directories\n", command_cd);
+            out("  %30s - copy file from tape\n", command_tape);
             out("  ? or help to display this message\n");
         } else test cmd %str_begins_with "format" then {
             ret := parse(cmd, "sds", args);
@@ -221,6 +223,23 @@ let start () be {
             }
 
             freevec(ret);
+        } else test cmd %str_begins_with "tape" then {
+            if current_disc = nil then {
+                outs("Mount a disc first!\n");
+                loop;
+            }
+
+            ret := parse(cmd, "sds", args);
+
+            if ret = -1 then {
+                error_msg("tape", command_tape);
+                loop;
+            }
+
+            if copy_from_tape(current_disc, args ! 1, args ! 2) < 0 then
+                out("Unable to copy '%s' from tape.\n", args ! 2);
+
+            freevec(ret);
         } else test cmd %str_begins_with "rm" then {
             if current_disc = nil then {
                 outs("Mount a disc first!\n");
@@ -230,7 +249,7 @@ let start () be {
             ret := parse(cmd, "ss", args);
 
             if ret = -1 then {
-                error_msg("rm", command_delete);
+                error_msg("rm", command_rm);
                 loop;
             }
 
