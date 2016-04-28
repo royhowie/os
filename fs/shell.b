@@ -34,14 +34,14 @@ let start () be {
 
         test cmd %str_begins_with "help" \/ cmd %str_begins_with "?" then {
             outs("The following commands are available:\n");
-            out("  %s\n", command_format);
-            out("  %s\n", command_mount);
-            out("  %s\n", command_touch);
-            out("  %s\n", command_read);
-            out("  %s\n", command_write);
-            out("  %s\n", command_delete);
-            out("  %s\n", command_mkdir);
-            out("  %s\n", command_cd);
+            out("  %30s - format a disc\n", command_format);
+            out("  %30s - mount a disc's file system\n", command_mount);
+            out("  %30s - create a file\n", command_touch);
+            out("  %30s - read the contents of a file\n", command_read);
+            out("  %30s - write to a file\n", command_write);
+            out("  %30s - delete a file or directory\n", command_delete);
+            out("  %30s - create a directory\n", command_mkdir);
+            out("  %30s - change directories\n", command_cd);
             out("  ? or help to display this message\n");
         } else test cmd %str_begins_with "format" then {
             ret := parse(cmd, "sds", args);
