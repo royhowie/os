@@ -153,7 +153,7 @@ let start () be {
             test current_file = nil then {
                 out("Could not find '%s' in current directory.\n", args ! 1);
             } else if current_file ! FT_block_tree ! 0 ! FH_type <> FT_DIRECTORY then {
-                out("'%s' is not a directory.\n");
+                out("'%s' is not a directory.\n", args ! 1);
                 close(current_file);
             }
 

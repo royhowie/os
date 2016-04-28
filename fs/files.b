@@ -423,8 +423,6 @@ and open_by_block_num (disc_info, block_number, direction) be {
 }
 
 and open (disc_info, file_name, direction) be {
-    let buffer = vec BLOCK_LEN;
-    let disc_number = disc_info ! disc_data ! SB_disc_number;
     let block_number;
     let FILE;
 
