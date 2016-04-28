@@ -12,6 +12,7 @@ export {
     block_tree_wind,
     block_tree_save,
     block_tree_pare,
+    block_tree_destruct,
     block_tree_go_back
 }
 
@@ -546,6 +547,19 @@ and block_tree_pare (FILE) be {
     // would be immediately recursed upon anyway. Hence, it should
     // be skipped.
     go_higher(FILE, levels - 1, levels);
+}
+
+and block_tree_destruct (FILE) be {
+    let block = FILE ! FT_block_tree ! 0 ! FH_current_block;
+
+    // Rewind the block tree to the beginning of the file.
+    block_tree_rewind(FILE);
+
+    // And release all blocks attached.
+    block_tree_pare(FILE);
+
+    // Finally, release the header block.
+    release_block(FILE ! FT_disc_info, block);
 }
 
 // Only intended to be used on directories, so, in theory, should

@@ -5,7 +5,7 @@ import "helpers"
 import "io"
 import "strings"
 
-export { open, open_dir, close, read_byte, write_byte, create, delete, eof, ls }
+export { open, open_dir, close, read_byte, write_byte, create, delete, eof, ls, create_dir_entry }
 
 let read_byte (FILE) be {
     let data;
@@ -29,6 +29,8 @@ and write_byte (FILE, data) be {
 
     block_tree_set(FILE, data);
     block_tree_advance(FILE, true);
+
+    FILE ! FT_modified := true;
 
     resultis 1;
 }
@@ -103,42 +105,83 @@ and file_in_dir (disc_info, file_name) be {
     resultis -1;
 }
 
+and delete_file (disc_info, file_name) be {
+    let FILE = open(disc_info, file_name, FT_BOTH); 
+    let header;
+
+    // If the file cannot be found, it cannot be deleted.
+    if FILE = nil then resultis -1;
+
+    header := FILE ! FT_block_tree ! 0;
+
+    // If the file is of type directory and it has more than
+    // two directory entries, i.e., if it has more than the default
+    // ./ and ../ entries, then the file cannot be deleted.
+    if header ! FH_type = FT_DIRECTORY
+       /\ header ! FH_length > 2 * 4 * SIZEOF_DIR_ENT then {
+        outs("Can only delete empty directories.\n");
+        resultis -1;
+    }
+
+    // Dismantle the block tree.
+    block_tree_destruct(FILE);
+
+    resultis 1;
+}
+
 and delete (disc_info, file_name) be {
     let DIR = disc_info ! disc_current_dir;
     let buff = vec SIZEOF_DIR_ENT;
     let search = vec SIZEOF_DIR_ENT;
 
-    block_tree_wind(DIR);
-
-    block_tree_go_back(DIR, 4 * SIZEOF_DIR_ENT);
-
-    if get_next_dir_entry(DIR, buff) = -1 then {
-        out("Directory has no entries left.");
+    // Prevent users from doing destructive things.
+    if file_name %streq "./" \/ file_name %streq "../" then {
+        out("Cannot delete '%s'.\n", file_name);
         resultis -1;
     }
 
-    // If the file is the last one in directory, delete it.
+    if DIR ! FT_block_tree ! 0 ! FH_length <= 2 * 4 * SIZEOF_DIR_ENT then {
+        outs("Directory empty.\n");
+        resultis -1;
+    }
+
+    // Want to first delete the file first, since this might
+    // pose problems.
+    if delete_file(disc_info, file_name) = -1 then {
+        resultis -1;
+    }
+
+    // Grab the last dir entry by moving to the end of the file,
+    // going back an entry, and grabbing the next entry.
+    block_tree_wind(DIR);
+    block_tree_go_back(DIR, 4 * SIZEOF_DIR_ENT);
+
+    // If the file is the last one in directory, delete it directly.
     if file_name %streq (buff + DIR_E_name) then {
+        // Move back the distance of a directory entry.
         block_tree_go_back(DIR, 4 * SIZEOF_DIR_ENT);
-        for i = 0 to 4 * SIZEOF_DIR_ENT - 1 do write_byte(DIR, 0);
+
+        // Reduce the file length by a directory entry.
+        DIR ! FT_block_tree ! 0 ! FH_length -:= 4 * SIZEOF_DIR_ENT;
+
+        // And save with zeroing enabled (this zeros out the last
+        // directory entry automagically).
+        block_tree_save(DIR, true);
+
         resultis 1;
     }
 
+    // Otherwise, the last entry was not the one we sought to delete,
+    // so rewind the block tree and search for it.
     block_tree_rewind(DIR);
-
     until eof(DIR) do {
         if get_next_dir_entry(DIR, search) = -1 then {
-            outs("File not in directory, so it cannot be deleted.\n");
+            out("'%s' does not exist in the current directory.\n", file_name);
             resultis -1;
         }
 
-        if file_name %streq (search + DIR_E_name) then
-            break;
+        if file_name %streq (search + DIR_E_name) then break;
     }
-
-    // If the end of the directory was reached, then the
-    // file is not there.
-    if eof(DIR) then resultis -1;
 
     // Otherwise, write over the found dir_ent with the last
     // dir_ent from before (i.e., with `buff`).
@@ -146,7 +189,11 @@ and delete (disc_info, file_name) be {
     for i = 0 to 4 * SIZEOF_DIR_ENT - 1 do
         write_byte(DIR, byte i of buff);
 
-    block_tree_save(DIR);
+    // Decrease the size of the directory to account for the
+    // removed directory entry.
+    DIR ! FT_block_tree ! 0 ! FH_length -:= 4 * SIZEOF_DIR_ENT;
+
+    block_tree_save(DIR, true);
 
     resultis 1;
 }
@@ -176,16 +223,25 @@ and create (disc_info, file_name, type) be {
     let buffer = vec BLOCK_LEN;
     let disc_number = disc_info ! disc_data ! SB_disc_number;
     let free_block = -1, parent_block_number;
+    let DIR = disc_info ! disc_current_dir;
 
     // Can only create a directory or a file.
     unless type = FT_FILE \/ type = FT_DIRECTORY do {
-        out("File can only be of type 'F' (file) or 'D' (directory)!\n");
+        outs("Incompatible file type. Only 'F' (file) and 'D' (directory) allowed.\n");
         resultis -1;
     }
 
     // If the file_name is not the correct length, return.
     unless 1 <= strlen(file_name) < FH_name_len do {
-        out("File name must be between 1 and 31 characters! '%s' invalid name.\n");
+        out("File name must be between 1 and %d characters! '%s' invalid name.\n",
+            FH_name_len - 1,
+            file_name
+        );
+        resultis -1;
+    }
+
+    unless file_in_dir(disc_info, file_name) = -1 do {
+        out("'%s' already exists in the current directory.\n", file_name);
         resultis -1;
     }
 
@@ -219,6 +275,40 @@ and create (disc_info, file_name, type) be {
     // Store the header block in the file header.
     buffer ! FH_current_block := free_block;
 
+    // Directories have ./ and ../ entries.
+    if type = FT_DIRECTORY then {
+        let dir_entry = vec SIZEOF_DIR_ENT;
+
+        // Directories have 2 entries by default.
+        buffer ! FH_length := 2 * 4 * SIZEOF_DIR_ENT;
+
+        // create_dir_entry (buff, fname, block_num, size, type, date) be {
+        create_dir_entry(
+            dir_entry,
+            "./",
+            free_block,
+            buffer ! FH_length,
+            FT_DIRECTORY,
+            buffer ! FH_date_created
+        );
+
+        for index = 0 to SIZEOF_DIR_ENT - 1 do
+            (buffer + FH_first_word) ! index := dir_entry ! index;
+
+        create_dir_entry(
+            dir_entry,
+            "../",
+            parent_block_number,
+            DIR ! FT_block_tree ! 0 ! FH_length,
+            FT_DIRECTORY,
+            DIR ! FT_block_tree ! 0 ! FH_date_created
+        );
+
+        for index = 0 to SIZEOF_DIR_ENT - 1 do
+            (buffer + FH_first_word + SIZEOF_DIR_ENT) ! index := dir_entry ! index;
+    }
+
+
     // Write the file header to disc.
     if write_block(disc_number, free_block, buffer) <= 0 then {
         out("Unable to save file to disc!\n");
@@ -227,13 +317,6 @@ and create (disc_info, file_name, type) be {
 
     // Add the file to the current directory
     add_dir_entry(disc_info, file_name, free_block, 0, FT_FILE, buffer ! FH_date_created);
-
-    // Directories should have ./ and ../ entries.
-    // This should probably involve a change of directories function.
-    if type = FT_DIRECTORY then {
-        add_dir_entry(disc_info, "./", free_block, 0, FT_DIRECTORY, buffer ! FH_date_created);
-        add_dir_entry(disc_info, "../", parent_block_number, 0, FT_DIRECTORY, seconds());
-    }
 
     resultis 1;
 }
@@ -283,6 +366,9 @@ and create_FT_entry (file_buffer, disc_info, direction) be {
     // Record the disc number.
     FILE ! FT_disc_number := disc_number;
 
+    // Record the index within the file table.
+    FILE ! FT_index := index;
+
     // And, naturally, the file has not yet been modified.
     FILE ! FT_modified := false;
 
@@ -295,17 +381,21 @@ and create_FT_entry (file_buffer, disc_info, direction) be {
     resultis FILE;
 }
 
+and create_dir_entry (buff, fname, block_num, size, type, date) be {
+    buff ! DIR_E_date       := date;
+    buff ! DIR_E_block      := block_num;
+    buff ! DIR_E_file_size  := size;
+    buff ! DIR_E_file_type  := type;
+    strcpy(buff + DIR_E_name, fname);
+}
+
 and add_dir_entry (disc_info, fname, block_num, size, type, date) be {
     let DIR = disc_info ! disc_current_dir;
     let buff = vec SIZEOF_DIR_ENT;
 
     block_tree_wind(DIR);
 
-    buff ! DIR_E_date       := date;
-    buff ! DIR_E_block      := block_num;
-    buff ! DIR_E_file_size  := size;
-    buff ! DIR_E_file_type  := type;
-    strcpy(buff + DIR_E_name, fname);
+    create_dir_entry(buff, fname, block_num, size, type, date);
 
     for index = 0 to 4 * SIZEOF_DIR_ENT - 1 do
         write_byte(DIR, byte index of buff);
@@ -319,12 +409,6 @@ and open (disc_info, file_name, direction) be {
     let buffer = vec BLOCK_LEN;
     let disc_number = disc_info ! disc_data ! SB_disc_number;
     let block_number;
-
-    // If not passed 3 arguments, return.
-    unless numbargs() = 3 do {
-        out("open(disc_info, file_name, direction) called with incorrect number of arguments\n");
-        resultis nil;
-    }
 
     // If not passed 'r' (reading), 'w' (writing), or 'b' (both), return
     unless direction = FT_READ \/ direction = FT_WRITE \/ direction = FT_BOTH do {
@@ -354,20 +438,19 @@ and open (disc_info, file_name, direction) be {
         resultis nil;
     }
 
+    // update access date
+    // buffer ! FH_date_accessed := seconds();
+
     resultis create_FT_entry(buffer, disc_info, direction);
 }
 
 and close (FILE) be {
-    let distance = @FILE - FILE_TABLE;
     let levels, block_tree;
+    let index = FILE ! FT_index;
 
-    unless 0 <= distance < FILE_TABLE_SIZE do {
-        outs("Invalid file pointer!\n");
-        resultis -1;
-    }
-
-    // If the file wasn't modified or it's a read-only file,
-    unless not FILE ! FT_modified \/ FILE ! FT_DIRECTION = FT_READ do {
+    // If the file was modified and was not opened for reading,
+    // then save it.
+    if FILE ! FT_modified /\ FILE ! FT_DIRECTION <> FT_READ then {
         block_tree_save(FILE, true);
 
         // Should only remove excess blocks from the tree if
@@ -390,7 +473,7 @@ and close (FILE) be {
     freevec(file);
 
     // Erase from the file table.
-    FILE_TABLE ! distance := nil;
+    FILE_TABLE ! index := nil;
 
     // And return 1 to indicate success.
     resultis 1;

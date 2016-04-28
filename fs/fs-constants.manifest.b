@@ -112,8 +112,12 @@ disc_FBL_window             = 2
 // FILE* to the current directory.
 disc_current_dir            = 3
 
-// size in words of the disc_info vector
-disc_info_size              = 4
+// Index of disc within DISCS.
+disc_index                  = 4
+
+// Size in words of the disc_info vector.
+SIZEOF_DISC_INFO            = 5
+
 BLOCK_LEN                   = 128
 
 /* ----------------------------------------- */
@@ -122,7 +126,7 @@ BLOCK_LEN                   = 128
 FILE_TABLE_SIZE             = 32
 FILE_TABLE                  = vec(FILE_TABLE_SIZE)
 
-FT_ENTRY_SIZE               = 6
+FT_ENTRY_SIZE               = 7
 FTB_size                    = 512
 FTB_size_words              = 128
 
@@ -141,6 +145,8 @@ FTB_size_words              = 128
 //  2n+1    offset within leaf block
 FT_block_tree               = 0
 
+// Absolute (i.e., total) byte position within the
+// file's block tree.
 FT_BT_byte_pos              = 1
 
 // Is the file being read ('R') or written to ('W')?
@@ -154,6 +160,9 @@ FT_disc_info                = 4
 
 // Number of disc on which file is located.
 FT_disc_number              = 5
+
+// Index of entry within file table.
+FT_index                    = 6
 
 // FH = File Header
 // These constants serve as pointed to data within

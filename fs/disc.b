@@ -16,49 +16,45 @@ let disc_is_formatted (buffer) be {
 let get_open_disc_slot () be {
     for i = 0 to max_number_of_discs - 1 do {
         if DISCS ! i = nil then {
-            let disc = newvec(disc_info_size);
+            let disc = newvec(SIZEOF_DISC_INFO);
 
             disc ! disc_has_changed := 0;
             disc ! disc_data := newvec(BLOCK_LEN);
             disc ! disc_FBL_window := newvec(BLOCK_LEN);
+            disc ! disc_index := i;
+
             DISCS ! i := disc;
 
-            resultis DISCS + i;
+            resultis disc;
         }
     }
+
     resultis -1;
 }
 
 let dismount (disc_info) be {
-    let distance = disc_info - DISCS;
-    let disc_number;
-
-    if distance < 0 \/ 32 <= distance then {
-        out("Invalid disc pointer to dismount!\n");
-        resultis -1;
-    }
+    let disc_number = disc_info ! disc_data ! SB_disc_number;
+    let index = disc_info ! disc_index;
 
     // Only need to write to disc if the in-memory data has been changed.
     if disc_info ! disc_has_changed then {
-        disc_number := disc_info ! disc_data ! SB_disc_number;
-
         // First, write the super block back to disc.
         if write_block(
             disc_number,
             SB_block_addr,
             disc_info ! disc_data
         ) <= 0 then {
-            out("Unable to save super block!\n");
+            outs("Unable to save super block!\n");
             resultis -1;
         }
     
-        // Next, write the window into the FBL.
+        // Next, write the window into the FBL back to disc.
         if write_block(
             disc_number,
             disc_info ! disc_data ! SB_FBL_index,
             disc_info ! disc_FBL_window
         ) <= 0 then {
-            out("Unable to save list of free blocks!\n");
+            outs("Unable to save list of free blocks!\n");
             resultis -1;
         }
 
@@ -66,9 +62,9 @@ let dismount (disc_info) be {
 
     freevec(disc_info ! disc_data);
     freevec(disc_info ! disc_FBL_window);
-    freevec(DISCS ! distance);
+    freevec(DISCS ! index);
 
-    DISCS ! distance := nil;
+    DISCS ! index := nil;
 
     resultis 1;
 }
@@ -142,16 +138,11 @@ let format_disc (disc_number, disc_name, force_write) be {
     let free_blocks = check_disc(disc_number);
     let fb_block_num = free_blocks - 1;
     let fb_boundary, root_dir_bn;
+    let dir_entry = vec SIZEOF_DIR_ENT;
 
-    // If not passed the correct number of arguments, return;
-    unless 1 < numbargs() < 4 do {
-        out("format_disc(disc_number, disc_name, [force_write]) was not called with the correct arguments!\n");
-        resultis -1;
-    }
-    
     // If the disc has no available blocks, return.
     if free_blocks <= 0 then {
-        out("Disc number %d has no available (i.e., free or used) blocks!\n", disc_number);
+        out("Disc number %d has no available blocks!\n", disc_number);
         resultis -1;
     }
 
@@ -283,13 +274,26 @@ let format_disc (disc_number, disc_name, force_write) be {
     buffer ! FH_type            := FT_DIRECTORY;
     buffer ! FH_date_created    := seconds();
     buffer ! FH_date_accessed   := buffer ! FH_date_created;
-    buffer ! FH_length          := 0;
+    buffer ! FH_length          := 4 * SIZEOF_DIR_ENT;
     buffer ! FH_parent_dir      := root_dir_bn;
     buffer ! FH_current_block   := root_dir_bn;
     strcpy(buffer + FH_name, "root");
 
+    // Add an entry for the current directory.
+    create_dir_entry(
+        dir_entry,
+        "./",
+        root_dir_bn,
+        buffer ! FH_length,
+        FT_DIRECTORY,
+        buffer ! FH_date_created
+    );
+
+    for index = 0 to SIZEOF_DIR_ENT - 1 do
+        (buffer + FH_first_word) ! index := dir_entry ! index;
+
     if write_block(disc_number, root_dir_bn, buffer) <= 0 then {
-        out("Unable to create root directory!\n");
+        outs("Unable to create root directory!\n");
         resultis -1;
     }
 
