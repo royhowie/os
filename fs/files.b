@@ -5,7 +5,7 @@ import "helpers"
 import "io"
 import "strings"
 
-export { open, open_dir, close, read_byte, write_byte, create, delete, eof, ls, create_dir_entry }
+export { open, open_by_block_num, close, read_byte, write_byte, create, delete, eof, ls, create_dir_entry }
 
 let read_byte (FILE) be {
     let data;
@@ -193,6 +193,8 @@ and delete (disc_info, file_name) be {
     // removed directory entry.
     DIR ! FT_block_tree ! 0 ! FH_length -:= 4 * SIZEOF_DIR_ENT;
 
+    block_tree_wind(DIR);
+
     block_tree_save(DIR, true);
 
     resultis 1;
@@ -316,22 +318,12 @@ and create (disc_info, file_name, type) be {
     }
 
     // Add the file to the current directory
-    add_dir_entry(disc_info, file_name, free_block, 0, FT_FILE, buffer ! FH_date_created);
+    add_dir_entry(disc_info, file_name, free_block, 0, type, buffer ! FH_date_created);
+
+    // Save the current directory.
+    block_tree_save(DIR, true);
 
     resultis 1;
-}
-
-and open_dir (disc_info, block_number, direction) be {
-    let disc_number = disc_info ! disc_data ! SB_disc_number;
-    let buffer = vec BLOCK_LEN;
-
-    // Read header file into memory
-    if read_block(disc_number, block_number, buffer) <= 0 then {
-        out("Unable to read directory located at block %d\n", block_number);
-        resultis -1;
-    }
-
-    resultis create_FT_entry(buffer, disc_info, direction); 
 }
 
 and create_FT_entry (file_buffer, disc_info, direction) be {
@@ -400,19 +392,33 @@ and add_dir_entry (disc_info, fname, block_num, size, type, date) be {
     for index = 0 to 4 * SIZEOF_DIR_ENT - 1 do
         write_byte(DIR, byte index of buff);
 
-    block_tree_save(DIR, true);
+    block_tree_save(DIR, false);
 
     resultis 1;
+}
+
+and open_by_block_num (disc_info, block_number, direction) be {
+    let disc_number = disc_info ! disc_data ! SB_disc_number;
+    let buffer = vec BLOCK_LEN;
+
+    // Read header file into memory
+    if read_block(disc_number, block_number, buffer) <= 0 then {
+        outs("Unable to read file header block from disc!\n");
+        resultis -1;
+    }
+
+    resultis create_FT_entry(buffer, disc_info, direction); 
 }
 
 and open (disc_info, file_name, direction) be {
     let buffer = vec BLOCK_LEN;
     let disc_number = disc_info ! disc_data ! SB_disc_number;
     let block_number;
+    let FILE;
 
     // If not passed 'r' (reading), 'w' (writing), or 'b' (both), return
     unless direction = FT_READ \/ direction = FT_WRITE \/ direction = FT_BOTH do {
-        out("Invalid file direction. 'r' is for reading and 'w' for writing.\n");
+        out("Invalid file direction. 'r' for reading, 'w' for writing, 'b' for both.\n");
         resultis nil;
     }
 
@@ -425,28 +431,26 @@ and open (disc_info, file_name, direction) be {
         resultis nil;
     }
 
-    // If a directory, open by block number, set as the current directory
-    if buffer ! FH_TYPE = FT_DIRECTORY then {
+    FILE := open_by_block_num(disc_info, block_number, direction);
+
+    // Guard clause for checking whether a file is a directory.
+    if FILE = nil then resultis nil;
+
+    if FILE ! FT_block_tree ! 0 ! FH_type = FT_DIRECTORY then {
         close(disc_info ! disc_current_dir);
-        disc_info ! disc_current_dir := open_dir(disc_info, block_number, direction);
-        resultis disc_info ! disc_current_dir;
+        disc_info ! disc_current_dir := FILE;
     }
 
-    // Otherwise, open like a normal file.
-    if read_block(disc_number, block_number, buffer) <= 0 then {
-        out("Unable to read header block from disc!\n");
-        resultis nil;
-    }
-
-    // update access date
-    // buffer ! FH_date_accessed := seconds();
-
-    resultis create_FT_entry(buffer, disc_info, direction);
+    resultis FILE;
 }
 
 and close (FILE) be {
     let levels, block_tree;
     let index = FILE ! FT_index;
+
+    // If the file is a directory, wind it to the end.
+    if FILE ! FT_block_tree ! 0 ! FH_type = FT_DIRECTORY then
+        block_tree_wind(FILE);
 
     // If the file was modified and was not opened for reading,
     // then save it.
