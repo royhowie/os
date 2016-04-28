@@ -112,11 +112,8 @@ let start () be {
                 loop;
             }
 
-            out("%s file '%s'.\n",
-                (create(current_disc, args ! 1, FT_FILE) < 0 ->
-                    "Unable to create", "Created"),
-                args ! 1
-            );
+            if create(current_disc, args ! 1, FT_FILE) < 0 then
+                out("Unable to create file '%s'.\n", args ! 1);
 
             freevec(ret);
         } else test cmd %str_begins_with "mkdir" then {
@@ -132,11 +129,8 @@ let start () be {
                 loop;
             }
 
-            out("%s directory '%s'.\n",
-                (create(current_disc, args ! 1, FT_DIRECTORY) < 0 ->
-                    "Unable to create", "Created"),
-                args ! 1
-            );
+            if create(current_disc, args ! 1, FT_DIRECTORY) < 0 then
+                out("Unable to create directory '%s'.\n", args ! 1);
 
             freevec(ret);
         } else test cmd %str_begins_with "cd" then {
@@ -161,6 +155,8 @@ let start () be {
                 close(current_file);
             }
 
+            current_file := nil;
+
             freevec(ret);
         } else test cmd %str_begins_with "read" then {
             if current_disc = nil then {
@@ -177,8 +173,13 @@ let start () be {
 
             current_file := open(current_disc, args ! 1, FT_READ);
 
+
             test current_file = nil then {
-                out("Unable to open file '%s' for reading.\n", args ! 1);
+                out("Unable to read '%s'.\n", args ! 1);
+            } else test current_file ! FT_block_tree ! 0 ! FH_type = FT_DIRECTORY then {
+                outs("Use `ls` to read directories.\n");
+                open(current_disc, "../", FT_BOTH);
+                current_file := nil;
             } else {
                 outs("--- begin ---\n");
                 until eof(current_file) do
@@ -233,18 +234,18 @@ let start () be {
                 loop;
             }
 
-            test delete(current_disc, args ! 1) < 0 then
-                out("Unable to delete '%s'.\n", args ! 1)
-            else
-                out("'%s' deleted.\n", args ! 1);
+            if delete(current_disc, args ! 1) < 0 then
+                out("Unable to delete '%s'.\n", args ! 1);
 
             freevec(ret);
         } else test cmd %str_begins_with "exit" \/ cmd %str_begins_with "logout" then
             finish
+        else test strlen(cmd) = 0 then
+            loop
         else out("Unknown command: '%s'!\n", cmd);
     }
 }
 
-and error_msg(cmd_name, cmd_help) be {
+and error_msg (cmd_name, cmd_help) be {
     out("Incorrect usage of %s: '%s'\n", cmd_name, cmd_help);
 }
