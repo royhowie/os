@@ -1,0 +1,13 @@
+1. read an executable from tape and run it, i.e., run it from the file system
+        class 7, Feb 2
+2. create a better file system
+3. be able to load 2+ files from file system and run concurrently
+        class 11, Feb 16
+4. make timesharing & the keyboard work
+        class 10, 11
+5. build page tables and page directories; read a separate executable from disc
+   (the real OS) and run it after VM has been turned on
+        class 16, March 3
+6. let the OS create new processes
+8. make access to fs through special system calls
+10. make better newvec and freevec
