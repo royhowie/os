@@ -159,9 +159,7 @@ and delete (disc_info, file_name) be {
 
     // Want to first delete the file first, since this might
     // pose problems.
-    if delete_file(disc_info, file_name) = -1 then {
-        resultis -1;
-    }
+    if delete_file(disc_info, file_name) = -1 then resultis -1;
 
     // Grab the last dir entry by moving to the end of the file,
     // going back an entry, and grabbing the next entry.
