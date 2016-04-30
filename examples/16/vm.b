@@ -54,9 +54,11 @@ let compute() be
 { let x = 0;
   for i = 0 to 15 do
   { let ch = i + 'A';
-    /* only the compute function is going to be copied into the user address
+    /*
+       only the compute function is going to be copied into the user address
        space, not the whole library. So we can't print things in the normal
        way. The out() at the end of this function will fail.
+    */
     assembly
     { type [<ch>] }
     for j = 1 to 500 do
