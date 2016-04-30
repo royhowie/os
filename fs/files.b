@@ -16,7 +16,8 @@ export {
     eof,
     ls,
     create_dir_entry,
-    copy_from_tape
+    copy_from_tape,
+    run_file
 }
 
 let read_byte (FILE) be {
@@ -525,3 +526,17 @@ and copy_from_tape (disc_info, tape_num, file_name) be {
     resultis tape_unload(tape_num) > 0 -> 1, -1;
 }
 
+and run_file (disc_info, file_name) be {
+    let FILE = open(disc_info, file_name, FT_READ);
+    let buffer, length;
+
+    if file = nil then resultis -1;
+
+    length := FILE ! FT_block_tree ! 0 ! FH_length;
+    buffer := newvec(length);
+
+    for i = 0 to length - 1 do
+        byte i of buffer := read_byte(FILE);
+
+    buffer();
+}

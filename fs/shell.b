@@ -16,7 +16,8 @@ static {
     command_rm          = "rm file_name",
     command_mkdir       = "mkdir dir_name",
     command_cd          = "cd dir_name",
-    command_tape        = "tape tape_num file_name"
+    command_tape        = "tape tape_num file_name",
+    command_run         = "run file_name"
 }
 
 
@@ -42,6 +43,7 @@ let run_shell () be {
             out("  %30s - create a directory\n", command_mkdir);
             out("  %30s - change directories\n", command_cd);
             out("  %30s - copy file from tape\n", command_tape);
+            out("  %30s - run an executable located on disc\n", command_run);
             out("  ? or help to display this message\n");
         } else test cmd %str_begins_with "format" then {
             ret := parse(cmd, "sds", args);
@@ -234,6 +236,23 @@ let run_shell () be {
 
             if copy_from_tape(current_disc, args ! 1, args ! 2) < 0 then
                 out("Unable to copy '%s' from tape.\n", args ! 2);
+
+            freevec(ret);
+        } else test cmd %str_begins_with "run" then {
+            if current_disc = nil then {
+                outs("Mount a disc first!\n");
+                loop;
+            }
+
+            ret := parse(cmd, "ss", args);
+
+            if ret = -1 then {
+                error_msg("run", command_run);
+                loop;
+            }
+
+            if run_file(current_disc, args ! 1) < 0 then
+                out("Unable to run '%s'!\n", args ! 1);
 
             freevec(ret);
         } else test cmd %str_begins_with "rm" then {
