@@ -10,6 +10,7 @@ let start () be {
     init(heap, 10000);
 
     // Start the shell
+    make_idle_process();
     make_process(run_shell, shell_stack + 3000);
 
     init_interrupts();

@@ -5,7 +5,8 @@ export {
     make_process,
     halt_handler, 
     div_zero_handler,
-    init_processes
+    init_processes,
+    make_idle_process
 }
 
 
@@ -48,7 +49,8 @@ manifest {
     PCB_R0              = 19,
     PCB_STATE           = 20,
     
-    PCB_SIZE            = 21
+    PCB_SIZE            = 21,
+    SIZEOF_PROCESS_TABLE= 64
 }
 
 static {
@@ -164,7 +166,10 @@ and make_process (program_counter, stack_pointer) be {
     let index = 0;
 
     // should also check that the process table isn't filled
-    until process_table ! index = nil do index +:= 1;
+    until index = SIZEOF_PROCESS_TABLE
+    \/ process_table ! index = nil do index +:= 1;
+
+    if index = SIZEOF_PROCESS_TABLE then resultis -1;
 
     // add the process to the table
     process_table ! index := process;
