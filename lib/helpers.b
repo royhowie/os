@@ -3,6 +3,7 @@ import "io"
 export {
     min,
     max,
+    math_abs,
     copy_buffer,
     copy_block,
     clear_buffer,
@@ -21,6 +22,8 @@ manifest { BLOCK_LEN = 128 }
 
 let min (a, b) = a < b -> a, b;
 let max (a, b) = a > b -> a, b;
+
+let math_abs (num) = num < 0 -> -num, num;
 
 let copy_buffer (source, dest, length) be for i = 0 to length - 1 do dest ! i := source ! i;
 let copy_block (source, dest) be copy_buffer(source, dest, BLOCK_LEN);
